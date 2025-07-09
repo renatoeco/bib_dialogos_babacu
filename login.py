@@ -182,7 +182,7 @@ def login():
     col1, col2, col3 = st.columns([2, 3, 2])   
    
     # Exibe o logo
-    col2.image("aux/logo dialogos do babacu.png", width=199)
+    col2.image("images/logo dialogos do babacu.png", width=199)
 
     # st.markdown(
     #     """

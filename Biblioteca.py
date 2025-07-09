@@ -113,7 +113,7 @@ def authenticate_drive():
 st.set_page_config(page_title="Biblioteca Diálogos do Babaçu", layout="wide")
 
 
-st.logo("aux/logo dialogos do babacu.png", size="large")
+st.logo("images/logo dialogos do babacu.png", size="large")
 st.header("Biblioteca Diálogos do Babaçu")
 st.write('')
 

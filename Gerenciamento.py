@@ -196,7 +196,7 @@ TEMAS_BABACU = [
 # --------------------------------------------------------------
 
 # Logo
-st.logo("aux/logo dialogos do babacu.png", size="large")
+st.logo("images/logo dialogos do babacu.png", size="large")
 
 
 st.header("Gerenciamento")

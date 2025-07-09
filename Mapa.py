@@ -32,7 +32,7 @@ df_pontos = pd.DataFrame(list(pontos.find()))
 # --------------------------------------------------------------
 
 st.set_page_config(page_title="Mapa dos Pontos de Interesse", layout="wide")
-st.logo("aux/logo dialogos do babacu.png", size="large")
+st.logo("images/logo dialogos do babacu.png", size="large")
 
 
 
