@@ -216,7 +216,7 @@ with tab_acervo:
         horizontal=True
     )
 
-
+    st.write(st.session_state)
 
     # ENVIAR ARQUIVO
 
