@@ -216,8 +216,6 @@ with tab_acervo:
         horizontal=True
     )
 
-    st.write(st.session_state)
-
     # ENVIAR ARQUIVO
 
     # FUNÇÕES PARA CADA TIPO DE ARQUIVO

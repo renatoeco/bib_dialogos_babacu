@@ -102,6 +102,8 @@ def recuperar_senha_dialog():
                             st.session_state.codigo_verificacao = codigo
                             st.session_state.codigo_enviado = True
                             st.session_state.email_verificado = email
+                            st.session_state["nome"] = nome
+                            
                             st.success(f"Código enviado para {email}.")
                         else:
                             st.error("Erro ao enviar o e-mail. Tente novamente.")
@@ -236,7 +238,7 @@ def login():
                 # st.session_state["tipo_usuario"] = tipo_usuario
                 st.session_state["nome"] = usuario_encontrado.get("nome_completo")
                 # st.session_state["cpf"] = usuario_encontrado.get("CPF")
-                st.session_state["id_usuario"] = usuario_encontrado.get("_id")
+                # st.session_state["id_usuario"] = usuario_encontrado.get("_id")
                 st.rerun()
             else:
                 st.error("E-mail ou senha inválidos!")
