@@ -218,7 +218,6 @@ with tab_acervo:
 
 
 
-
     # ENVIAR ARQUIVO
 
     # FUNÇÕES PARA CADA TIPO DE ARQUIVO
@@ -1212,7 +1211,43 @@ with tab_acervo:
 
     if acao == "Cadastrar documento":
         # Escolha do tipo de mídia
-        midia_selecionada = st.pills(label="Qual tipo de Mídia", options=["Publicação", "Imagem", "Relatório", "Vídeo", "Podcast", "Site", "Mapa", "Legislação", "Ponto de interesse"])
+
+
+        # 1. Dicionário: valor real -> rótulo com ícone
+        TIPOS_MIDIA = {
+            "Publicação": ":material/menu_book: Publicação",
+            "Imagem": ":material/add_a_photo: Imagem",
+            "Relatório": ":material/assignment: Relatório",
+            "Vídeo": ":material/videocam: Vídeo",
+            "Podcast": ":material/podcasts: Podcast",
+            "Site": ":material/language: Site",
+            "Mapa": ":material/map: Mapa",
+            "Legislação": ":material/balance: Legislação",
+            "Ponto de interesse": ":material/location_on: Ponto de interesse"
+        }
+
+        # 2. Lista de rótulos com ícones
+        rotulos_com_icone = list(TIPOS_MIDIA.values())
+
+        # 3. Mostra os pills com ícone (seleção única)
+        rotulo_selecionado = st.pills(
+            label="Qual tipo de Mídia",
+            options=rotulos_com_icone,
+            selection_mode="single"
+        )
+
+        # 4. Converte de volta para o valor real
+        midia_selecionada = next(
+            (tipo for tipo, rotulo in TIPOS_MIDIA.items() if rotulo == rotulo_selecionado),
+            None
+        )
+
+
+
+
+
+
+        # midia_selecionada = st.pills(label="Qual tipo de Mídia", options=["Publicação", "Imagem", "Relatório", "Vídeo", "Podcast", "Site", "Mapa", "Legislação", "Ponto de interesse"])
     
 
         if midia_selecionada == "Publicação":
@@ -1235,23 +1270,16 @@ with tab_acervo:
             enviar_ponto()
 
 
+    elif acao == "Editar um documento":
+        st.write('')
+        st.write('')
+        st.write("Em construção")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    elif acao == "Excluir um documento":
+        st.write('')
+        st.write('')
+        st.write("Em construção")
 
 # PESSOAS
 with tab_pessoas:
-    st.write("Pessoas")
+    st.write("Em construção")

@@ -133,13 +133,58 @@ st.write('')
 # FILTROS
 
 with st.expander("Filtros"):
+
+    # 1. Dicionário de tipos (valor real -> label com ícone)
+    TIPOS_MIDIA = {
+        "Publicação": ":material/menu_book: Publicação",
+        "Imagem": ":material/add_a_photo: Imagem",
+        "Relatório": ":material/assignment: Relatório",
+        "Vídeo": ":material/videocam: Vídeo",
+        "Podcast": ":material/podcasts: Podcast",
+        "Site": ":material/language: Site",
+        "Mapa": ":material/map: Mapa",
+        "Legislação": ":material/balance: Legislação",
+        "Ponto de interesse": ":material/location_on: Ponto de interesse"
+    }
+
+    # 2. Lista dos rótulos com ícone
+    rotulos_com_icone = list(TIPOS_MIDIA.values())
+
+
+    # 3. Mostrar os pills com rótulos visuais
+    pills_selecionadas = st.pills(
+        label="Tipo de Mídia",
+        options=rotulos_com_icone,
+        selection_mode="multi"
+    )
+
+    # 4. Reverter para os valores reais (sem ícone)
+    tipo_midia_selecionada = [
+        tipo for tipo, rotulo in TIPOS_MIDIA.items() if rotulo in pills_selecionadas
+    ]
+
+
+
+
+
+
+    # # Tipos de mídia como pills
+    # tipos_de_midia = [":material/menu_book: Publicação", 
+    #                   ":material/add_a_photo: Imagem", 
+    #                   ":material/assignment: Relatório", 
+    #                   ":material/videocam: Vídeo", 
+    #                   ":material/podcasts: Podcast", 
+    #                   ":material/language: Site", 
+    #                   ":material/ad: Site", 
+    #                   ":material/map: Mapa", 
+    #                   ":material/balance: Legislação", 
+    #                   ":material/location_on: Ponto de interesse"]
     
-    # Tipos de mídia como pills
-    tipos_de_midia = ["Publicação", "Imagem", "Relatório", "Vídeo", "Podcast", "Site", "Mapa", "Legislação", "Ponto de interesse"]
-    tipo_midia_selecionada = st.pills(label="Tipo de Mídia", 
-                                      options=tipos_de_midia,
-                                      selection_mode="multi"
-                                      )
+
+    # tipo_midia_selecionada = st.pills(label="Tipo de Mídia", 
+    #                                   options=tipos_de_midia,
+    #                                   selection_mode="multi"
+    #                                   )
     
     
 
@@ -254,58 +299,131 @@ for item in arquivos:
 
 
 
-# arquivos = list(publicacoes.find(query).sort("data_upload", -1))
 
-# Exibição dos arquivos
+TIPOS_MIDIA_ICONE = {
+    "Publicação": "menu_book",
+    "Imagem": "add_a_photo",
+    "Relatório": "assignment",
+    "Vídeo": "videocam",
+    "Podcast": "podcasts",
+    "Site": "language",
+    "Mapa": "map",
+    "Legislação": "balance",
+    "Ponto de interesse": "location_on"
+}
+
 if arquivos:
+    st.subheader(f"{len(arquivos)} documento" if len(arquivos) == 1 else f"{len(arquivos)} documentos")
+    st.write("")
 
-    if len(arquivos) == 1:
-        st.subheader(f"{len(arquivos)} documento")
-    else:
-        st.subheader(f"{len(arquivos)} documentos")
-
-    st.write('')
-    cols_per_row = 4
+    cols_per_row = 4  # ajuste conforme o layout desejado
     for i in range(0, len(arquivos), cols_per_row):
         cols = st.columns(cols_per_row)
+
         for idx, arq in enumerate(arquivos[i:i+cols_per_row]):
             with cols[idx]:
-                # Container para o card com borda e sombra leve via CSS inline
-                st.markdown(
-                    f"""
-                    <div style="
-                        border: 1px solid #ddd; 
-                        border-radius: 8px; 
-                        padding: 16px; 
-                        box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
-                        margin-bottom: 16px;
-                        background-color: #fff;
-                        height: 100%;
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: space-between;
-                    ">
-                        <p>{arq.get('tipo')}</p>
-                        <h5 style="margin-bottom: 8px;">{arq.get('titulo', 'Sem Título')}</h5>
-                        <p style="flex-grow: 1; margin-bottom: 8px;"><em>{arq.get('descricao', 'Sem descrição')}</em></p>
-                        <p><strong>Autor:</strong> {arq.get('autor')}</p>
-                        <p><strong>Organização:</strong> {arq.get('organizacao')}</p>
-                        <p><strong>Tema:</strong> {arq.get('tema')}</p>
-                        <a href="{arq.get('link')}" target="_blank" style="text-decoration:none;">
-                            <button style="
-                                background-color: #7f3e21;
-                                color: white;
-                                padding: 8px 12px;
-                                border: none;
-                                border-radius: 5px;
-                                cursor: pointer;
-                            ">Acessar</button>
-                        </a>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                with st.container(border=True):
+
+                    # Dados principais
+                    tipo = arq.get("tipo", "Tipo não informado")
+                    icon = TIPOS_MIDIA_ICONE.get(tipo, "folder")
+                    titulo = arq.get("titulo", "Sem título")
+                    descricao = arq.get("descricao", "Sem descrição")
+                    autor = arq.get("autor", "Autor desconhecido")
+                    tema = arq.get("tema", [])
+                    organizacao = arq.get("organizacao", [])
+                    link = arq.get("link", "#")
+
+                    # Transforma listas em strings
+                    if isinstance(tema, list):
+                        tema = ", ".join(tema)
+                    if isinstance(organizacao, list):
+                        organizacao = ", ".join(organizacao)
+
+
+                    # LAYOUT DO CARD
+                    
+                    # Ícone com texto no topo
+                    st.write(f":material/{icon}: {tipo}")
+                    
+                    # Título e descrição
+                    st.markdown(f"<h5 style='margin-bottom: 0.5rem'>{titulo}</h5>", unsafe_allow_html=True)
+                    st.write(descricao)
+
+                    # Metadados
+                    st.write(f"**Autor**: {autor}")
+                    st.write(f"**Organização**: {organizacao}")
+                    st.write(f"**Tema**: {tema}")
+
+                    # Botão de acesso
+                    st.link_button("Ver detalhes", url=link, type="primary")
+
 else:
     st.info("Nenhum arquivo encontrado para os filtros aplicados.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # Exibição dos arquivos
+# if arquivos:
+
+#     if len(arquivos) == 1:
+#         st.subheader(f"{len(arquivos)} documento")
+#     else:
+#         st.subheader(f"{len(arquivos)} documentos")
+
+#     st.write('')
+#     cols_per_row = 4
+#     for i in range(0, len(arquivos), cols_per_row):
+#         cols = st.columns(cols_per_row)
+#         for idx, arq in enumerate(arquivos[i:i+cols_per_row]):
+#             with cols[idx]:
+#                 # Container para o card com borda e sombra leve via CSS inline
+#                 st.markdown(
+#                     f"""
+#                     <div style="
+#                         border: 1px solid #ddd; 
+#                         border-radius: 8px; 
+#                         padding: 16px; 
+#                         box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+#                         margin-bottom: 16px;
+#                         background-color: #fff;
+#                         height: 100%;
+#                         display: flex;
+#                         flex-direction: column;
+#                         justify-content: space-between;
+#                     ">
+#                         <p>{arq.get('tipo')}</p>
+#                         <h5 style="margin-bottom: 8px;">{arq.get('titulo', 'Sem Título')}</h5>
+#                         <p style="flex-grow: 1; margin-bottom: 8px;"><em>{arq.get('descricao', 'Sem descrição')}</em></p>
+#                         <p><strong>Autor:</strong> {arq.get('autor')}</p>
+#                         <p><strong>Organização:</strong> {arq.get('organizacao')}</p>
+#                         <p><strong>Tema:</strong> {arq.get('tema')}</p>
+#                         <a href="{arq.get('link')}" target="_blank" style="text-decoration:none;">
+#                             <button style="
+#                                 background-color: #7f3e21;
+#                                 color: white;
+#                                 padding: 8px 12px;
+#                                 border: none;
+#                                 border-radius: 5px;
+#                                 cursor: pointer;
+#                             ">Acessar</button>
+#                         </a>
+#                     </div>
+#                     """,
+#                     unsafe_allow_html=True,
+#                 )
+# else:
+#     st.info("Nenhum arquivo encontrado para os filtros aplicados.")
 
 

@@ -269,17 +269,20 @@ else:
         "Biblioteca.py", 
         "Mapa.py",
         "Gerenciamento.py", 
-        # "Programas e Áreas.py", 
-        # "Pessoas.py",
-        # "Doadores.py", 
-        # "Projetos.py", 
-        # "Fundo Ecos.py", 
-        # "Monitor de PLs.py",
-        # "Clipping de Notícias.py", 
-        # "Viagens.py",
-        # "Férias e recessos.py",
-        # "Manuais.py",
+       
+    ])
+
+    pg_com_icones = st.navigation([
+    st.Page("Biblioteca.py", title="Biblioteca", icon=":material/menu_book:"), # Ícone de Material Design para livro/menu
+    st.Page("Mapa.py", title="Mapa", icon=":material/map:"),           # Ícone de Material Design para mapa
+    st.Page("Gerenciamento.py", title="Gerenciamento", icon=":material/settings:"), # Ícone de Material Design para gerenciamento
+        # Adicione as outras páginas aqui, cada uma com seu respectivo ícone
     ])
 
     # Executa a página selecionada
-    pg.run()
+    pg_com_icones.run()
+
+
+
+    # Executa a página selecionada
+    # pg.run()
