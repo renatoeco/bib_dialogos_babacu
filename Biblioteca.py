@@ -84,8 +84,6 @@ st.write('')
 
 
 
-
-
 # --------------------------------------------------------------
 # Listagem dos arquivos
 
@@ -95,18 +93,13 @@ st.write('')
 
 
 
-
-
-
-
-
-# ------------------ Função utilitária para imagem do Google Drive ------------------ #
-def link_drive_para_embed(link):
-    match = re.search(r"/d/([a-zA-Z0-9_-]+)", link)
-    if match:
-        file_id = match.group(1)
-        return f"https://drive.google.com/uc?export=view&id={file_id}"
-    return link
+# # ------------------ Função utilitária para imagem do Google Drive ------------------ #
+# def link_drive_para_embed(link):
+#     match = re.search(r"/d/([a-zA-Z0-9_-]+)", link)
+#     if match:
+#         file_id = match.group(1)
+#         return f"https://drive.google.com/uc?export=view&id={file_id}"
+#     return link
 
 # ------------------ Dicionários de tipo e ícones ------------------ #
 TIPOS_MIDIA = {
@@ -133,9 +126,11 @@ TIPOS_MIDIA_ICONE = {
     "Ponto de interesse": "location_on"
 }
 
+
 # ------------------ 1. FORMULÁRIO DE FILTROS ------------------ #
 with st.expander("Filtros"):
     with st.form("form_filtros"):
+
         # Lista com ícones para exibir nas pills
         rotulos_com_icone = list(TIPOS_MIDIA.values())
 
@@ -177,6 +172,9 @@ with st.expander("Filtros"):
         busca_texto = col1.text_input("Buscar palavra chave")
 
         filtrar = st.form_submit_button("Filtrar", icon=":material/filter_list:")
+
+
+
 
 # ------------------ 2. CONSULTA INICIAL (sem filtros = mostra tudo) ------------------ #
 def buscar_arquivos(query={}):
@@ -241,12 +239,15 @@ if arquivos:
     # Ordenação e limpeza de campos
     arquivos.sort(key=lambda x: x.get("data_upload", None), reverse=True)
 
-    for item in arquivos:
-        if isinstance(item.get("tema"), list):
-            item["tema"] = ", ".join(item["tema"])
-        if isinstance(item.get("organizacao"), list):
-            item["organizacao"] = ", ".join(item["organizacao"])
 
+    for item in arquivos:  # Para cada dicionário (item) dentro da lista 'arquivos'
+        if isinstance(item.get("tema"), list):  # Verifica se o valor da chave "tema" é uma lista
+            item["tema"] = ", ".join(item["tema"])  # Concatena os elementos da lista em uma string separada por vírgulas
+        if isinstance(item.get("organizacao"), list):  # Verifica se o valor da chave "organizacao" é uma lista
+            item["organizacao"] = ", ".join(item["organizacao"])  # Concatena os elementos da lista em uma string separada por vírgulas
+
+
+    # Contagem de documentos
     st.subheader(f"{len(arquivos)} documento" if len(arquivos) == 1 else f"{len(arquivos)} documentos")
     st.write("")
 
@@ -254,8 +255,8 @@ if arquivos:
     with st.container(border=False, horizontal=True, width='stretch'):
         for arq in arquivos:
 
-            with st.container(border=True, width=290, key=arq.get("_id", None)):
 
+            with st.container(border=True, width=290, key=arq.get("_id", None)):
 
                 tipo = arq.get("tipo", "Tipo não informado")
                 icon = TIPOS_MIDIA_ICONE.get(tipo, "folder")
@@ -265,13 +266,29 @@ if arquivos:
                 tema = arq.get("tema", "")
                 organizacao = arq.get("organizacao", "")
                 link = arq.get("link", "#")
+                thumb = arq.get("thumb_link", None)
 
                 st.write(f":material/{icon}: {tipo}")
 
-                if tipo == "Imagem" and link and link != "#":
-                    link_embed = link_drive_para_embed(link)
-                    st.image(link_embed, use_container_width=True)
+                # Mostrar miniatura
 
+                thumb_link = arq.get("thumb_link")
+
+                if thumb_link:
+                    try:
+                        # Extrair o ID do arquivo
+                        file_id = thumb_link.split("/d/")[1].split("/")[0]
+
+                        # Use o link de miniatura, que costuma ser mais estável
+                        direct_url = f"https://drive.google.com/thumbnail?sz=w280&id={file_id}"
+
+                        st.image(direct_url, width=280)
+
+                    except Exception as e:
+                        st.warning(f"Erro ao exibir miniatura: {e}")
+
+
+                # texto
                 st.markdown(f"<h5 style='margin-bottom: 0.5rem'>{titulo}</h5>", unsafe_allow_html=True)
                 st.write(descricao)
                 st.write(f"**Autor:** {autor}")
@@ -279,7 +296,38 @@ if arquivos:
                 st.write(f"**Tema:** {tema}")
                 st.link_button("Ver detalhes", url=link, type="primary")
 
-                st.markdown("</div>", unsafe_allow_html=True)
+
+
+
+
+
+
+
+            # with st.container(border=True, width=290, key=arq.get("_id", None)):
+
+
+            #     tipo = arq.get("tipo", "Tipo não informado")
+            #     icon = TIPOS_MIDIA_ICONE.get(tipo, "folder")
+            #     titulo = arq.get("titulo", "Sem título")
+            #     descricao = arq.get("descricao", "Sem descrição")
+            #     autor = arq.get("autor", "Autor desconhecido")
+            #     tema = arq.get("tema", "")
+            #     organizacao = arq.get("organizacao", "")
+            #     link = arq.get("link", "#")
+
+            #     st.write(f":material/{icon}: {tipo}")
+
+            #     # imagem
+            #     #
+
+            #     st.markdown(f"<h5 style='margin-bottom: 0.5rem'>{titulo}</h5>", unsafe_allow_html=True)
+            #     st.write(descricao)
+            #     st.write(f"**Autor:** {autor}")
+            #     st.write(f"**Organização:** {organizacao}")
+            #     st.write(f"**Tema:** {tema}")
+            #     st.link_button("Ver detalhes", url=link, type="primary")
+
+            #     st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     st.info("Nenhum arquivo encontrado para os filtros aplicados.")

@@ -9,7 +9,8 @@ import tempfile
 import json
 from zoneinfo import ZoneInfo
 
-
+from PIL import Image
+# from pydrive.drive import GoogleDrive
 
 # --------------------------------------------------------------
 # Configurações do MongoDB
@@ -93,26 +94,26 @@ TIPO_PASTA_MAP = {
 }
 
 
+
+
 def upload_to_drive(file, filename, tipo):
-    # Se for outros tipos que não precisam de armazenamento no Drive
     if tipo not in TIPO_PASTA_MAP:
-        return None
+        return None, None
 
     tipo_key = TIPO_PASTA_MAP[tipo]
     parent_folder_id = st.secrets["pastas"].get(tipo_key)
 
     if not parent_folder_id:
-        st.error(f"Tipo de mídia permitido, mas pasta não configurada no secrets: {tipo_key}")
-        return None
+        st.error(f"Pasta não configurada no secrets: {tipo_key}")
+        return None, None
 
     drive = authenticate_drive()
 
-    # Gera nome da subpasta com timestamp
-    base_name = os.path.splitext(filename)[0]
+    base_name, ext = os.path.splitext(filename)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = f"{timestamp}_{base_name}"
 
-    # Cria nova subpasta
+    # Cria subpasta no Google Drive
     subfolder = drive.CreateFile({
         'title': folder_name,
         'mimeType': 'application/vnd.google-apps.folder',
@@ -121,11 +122,11 @@ def upload_to_drive(file, filename, tipo):
     subfolder.Upload()
     subfolder_id = subfolder['id']
 
-    # Salva o arquivo temporariamente
+    # Salva arquivo original temporariamente
     with open(filename, "wb") as f:
         f.write(file.getbuffer())
 
-    # Cria e faz upload do arquivo dentro da subpasta
+    # Upload do arquivo original
     gfile = drive.CreateFile({
         'title': filename,
         'parents': [{'id': subfolder_id}]
@@ -133,21 +134,190 @@ def upload_to_drive(file, filename, tipo):
     gfile.SetContentFile(filename)
     gfile.Upload()
 
-    # # Torna o arquivo acessível publicamente via link
-    # gfile.InsertPermission({
-    #     'type': 'anyone',
-    #     'value': 'anyone',
-    #     'role': 'reader'
-    # })
+    file_link = f"https://drive.google.com/file/d/{gfile['id']}/view"
 
-    # Remove o arquivo local
+    # ----------------------
+    # Tenta gerar miniatura
+    # ----------------------
+    thumb_link = None  # <- Garantido, sempre existe
+    try:
+        img = Image.open(filename)
+        img.thumbnail((280, 280))
+
+        thumb_name = f"miniatura_{base_name}.png"
+        thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
+        img.save(thumb_path, format="PNG")
+
+        thumb_file = drive.CreateFile({
+            'title': thumb_name,
+            'parents': [{'id': subfolder_id}]
+        })
+        thumb_file.SetContentFile(thumb_path)
+        thumb_file.Upload()
+
+        thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
+
+        os.remove(thumb_path)
+
+    except Exception as e:
+        st.warning(f"Miniatura não criada (imagem inválida ou outro erro): {e}")
+
+    # Remove arquivo local original
     os.remove(filename)
 
-    # Retorna o link público do Google Drive
-    file_id = gfile['id']
-    file_link = f"https://drive.google.com/file/d/{file_id}/view"
+    return file_link, thumb_link
 
-    return file_link
+
+
+
+
+
+
+
+# def upload_to_drive(file, filename, tipo):
+#     # Se for tipo não autorizado a salvar no Drive
+#     if tipo not in TIPO_PASTA_MAP:
+#         return None
+
+#     tipo_key = TIPO_PASTA_MAP[tipo]
+#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
+
+#     if not parent_folder_id:
+#         st.error(f"Tipo de mídia permitido, mas pasta não configurada no secrets: {tipo_key}")
+#         return None
+
+#     # Autentica no Drive
+#     drive = authenticate_drive()
+
+#     # Gera nome da subpasta com timestamp
+#     base_name, ext = os.path.splitext(filename)
+#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = f"{timestamp}_{base_name}"
+
+#     # Cria nova subpasta no Drive
+#     subfolder = drive.CreateFile({
+#         'title': folder_name,
+#         'mimeType': 'application/vnd.google-apps.folder',
+#         'parents': [{'id': parent_folder_id}]
+#     })
+#     subfolder.Upload()
+#     subfolder_id = subfolder['id']
+
+#     # Salva o arquivo original localmente
+#     with open(filename, "wb") as f:
+#         f.write(file.getbuffer())
+
+#     # Faz upload do arquivo original
+#     gfile = drive.CreateFile({
+#         'title': filename,
+#         'parents': [{'id': subfolder_id}]
+#     })
+#     gfile.SetContentFile(filename)
+#     gfile.Upload()
+
+#     # -------------------------------
+#     # SE FOR IMAGEM, GERAR MINIATURA
+#     # -------------------------------
+#     try:
+#         img = Image.open(filename)
+#         img.thumbnail((280, 280))   # Mantém proporção até caber em 280x280
+
+#         # Nome da miniatura
+#         thumb_name = f"miniatura_{base_name}.png"
+
+#         # Salva miniatura temporária
+#         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
+#         img.save(thumb_path, format="PNG")
+
+#         # Faz upload da miniatura no Drive
+#         thumb_file = drive.CreateFile({
+#             'title': thumb_name,
+#             'parents': [{'id': subfolder_id}]
+#         })
+#         thumb_file.SetContentFile(thumb_path)
+#         thumb_file.Upload()
+
+#         # Remove arquivo temporário da miniatura
+#         os.remove(thumb_path)
+
+#     except Exception as e:
+#         st.warning(f"Não foi possível gerar miniatura: {e}")
+
+#     # Remove arquivo local original
+#     os.remove(filename)
+
+#     # Retorna link público do arquivo original
+#     file_id = gfile['id']
+#     file_link = f"https://drive.google.com/file/d/{file_id}/view"
+
+#     return file_link
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def upload_to_drive(file, filename, tipo):
+#     # Se for outros tipos que não precisam de armazenamento no Drive
+#     if tipo not in TIPO_PASTA_MAP:
+#         return None
+
+#     tipo_key = TIPO_PASTA_MAP[tipo]
+#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
+
+#     if not parent_folder_id:
+#         st.error(f"Tipo de mídia permitido, mas pasta não configurada no secrets: {tipo_key}")
+#         return None
+
+#     drive = authenticate_drive()
+
+#     # Gera nome da subpasta com timestamp
+#     base_name = os.path.splitext(filename)[0]
+#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = f"{timestamp}_{base_name}"
+
+#     # Cria nova subpasta
+#     subfolder = drive.CreateFile({
+#         'title': folder_name,
+#         'mimeType': 'application/vnd.google-apps.folder',
+#         'parents': [{'id': parent_folder_id}]
+#     })
+#     subfolder.Upload()
+#     subfolder_id = subfolder['id']
+
+#     # Salva o arquivo temporariamente
+#     with open(filename, "wb") as f:
+#         f.write(file.getbuffer())
+
+#     # Cria e faz upload do arquivo dentro da subpasta
+#     gfile = drive.CreateFile({
+#         'title': filename,
+#         'parents': [{'id': subfolder_id}]
+#     })
+#     gfile.SetContentFile(filename)
+#     gfile.Upload()
+
+
+#     # Remove o arquivo local
+#     os.remove(filename)
+
+#     # Retorna o link público do Google Drive
+#     file_id = gfile['id']
+#     file_link = f"https://drive.google.com/file/d/{file_id}/view"
+
+#     return file_link
 
 
 
@@ -414,7 +584,7 @@ with tab_acervo:
                         titulo_com_extensao = f"{titulo.strip()}{extensao}"
 
                         # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        file_link = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
+                        file_link, thumb_link = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
 
                         # Prepara o dicionário com os dados para salvar no MongoDB
                         data = {
@@ -431,6 +601,7 @@ with tab_acervo:
                             "tipo": tipo_doc,
                             "enviado_por": st.session_state["nome"],
                             "link": file_link,
+                            "thumb_link": thumb_link,
                             "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
                         }
 
