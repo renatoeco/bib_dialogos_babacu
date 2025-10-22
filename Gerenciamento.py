@@ -8,6 +8,8 @@ from pydrive2.drive import GoogleDrive
 import tempfile
 import json
 from zoneinfo import ZoneInfo
+from pdf2image import convert_from_path
+import re
 
 from PIL import Image
 # from pydrive.drive import GoogleDrive
@@ -96,6 +98,7 @@ TIPO_PASTA_MAP = {
 
 
 
+
 def upload_to_drive(file, filename, tipo):
     if tipo not in TIPO_PASTA_MAP:
         return None, None
@@ -113,7 +116,7 @@ def upload_to_drive(file, filename, tipo):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = f"{timestamp}_{base_name}"
 
-    # Cria subpasta no Google Drive
+    # Cria subpasta no Drive
     subfolder = drive.CreateFile({
         'title': folder_name,
         'mimeType': 'application/vnd.google-apps.folder',
@@ -122,50 +125,169 @@ def upload_to_drive(file, filename, tipo):
     subfolder.Upload()
     subfolder_id = subfolder['id']
 
-    # Salva arquivo original temporariamente
+    # Salva arquivo temporariamente
     with open(filename, "wb") as f:
         f.write(file.getbuffer())
 
     # Upload do arquivo original
-    gfile = drive.CreateFile({
-        'title': filename,
-        'parents': [{'id': subfolder_id}]
-    })
+    gfile = drive.CreateFile({'title': filename, 'parents': [{'id': subfolder_id}]})
     gfile.SetContentFile(filename)
     gfile.Upload()
-
     file_link = f"https://drive.google.com/file/d/{gfile['id']}/view"
 
-    # ----------------------
-    # Tenta gerar miniatura
-    # ----------------------
-    thumb_link = None  # <- Garantido, sempre existe
+    # ------------------------
+    # Miniatura (imagem ou PDF)
+    # ------------------------
+    thumb_link = None
     try:
-        img = Image.open(filename)
-        img.thumbnail((280, 280))
-
         thumb_name = f"miniatura_{base_name}.png"
         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
-        img.save(thumb_path, format="PNG")
 
-        thumb_file = drive.CreateFile({
-            'title': thumb_name,
-            'parents': [{'id': subfolder_id}]
-        })
-        thumb_file.SetContentFile(thumb_path)
-        thumb_file.Upload()
+        # Se for imagem
+        if ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
+            img = Image.open(filename)
+            w, h = img.size
+            new_height = int((280 / w) * h)  # mantém proporção
+            img = img.resize((280, new_height), Image.Resampling.LANCZOS)
+            img.save(thumb_path, "PNG")
 
-        thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
+        # Se for PDF → pega primeira página
+        elif ext.lower() == '.pdf':
+            pages = convert_from_path(filename, dpi=150, first_page=1, last_page=1)
+            if pages:
+                img = pages[0]
+                w, h = img.size
+                new_height = int((280 / w) * h)  # mantém proporção
+                img = img.resize((280, new_height), Image.Resampling.LANCZOS)
+                img.save(thumb_path, "PNG")
 
-        os.remove(thumb_path)
+
+        # # ✅ Se for imagem
+        # if ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
+        #     img = Image.open(filename)
+        #     img.thumbnail((280, 280))
+        #     img.save(thumb_path, "PNG")
+
+        # # ✅ Se for PDF → pega primeira página
+        # elif ext.lower() == '.pdf':
+        #     pages = convert_from_path(filename, dpi=150, first_page=1, last_page=1)
+        #     if pages:
+        #         img = pages[0]
+        #         img.thumbnail((280, 280))
+        #         img.save(thumb_path, "PNG")
+
+        # Se gerou thumb, faz upload no Drive
+        if os.path.exists(thumb_path):
+            thumb_file = drive.CreateFile({
+                'title': thumb_name,
+                'parents': [{'id': subfolder_id}]
+            })
+            thumb_file.SetContentFile(thumb_path)
+            thumb_file.Upload()
+            thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
+            os.remove(thumb_path)
 
     except Exception as e:
-        st.warning(f"Miniatura não criada (imagem inválida ou outro erro): {e}")
+        st.warning(f"Miniatura não criada: {e}")
 
     # Remove arquivo local original
     os.remove(filename)
 
     return file_link, thumb_link
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def upload_to_drive(file, filename, tipo):
+#     if tipo not in TIPO_PASTA_MAP:
+#         return None, None
+
+#     tipo_key = TIPO_PASTA_MAP[tipo]
+#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
+
+#     if not parent_folder_id:
+#         st.error(f"Pasta não configurada no secrets: {tipo_key}")
+#         return None, None
+
+#     drive = authenticate_drive()
+
+#     base_name, ext = os.path.splitext(filename)
+#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = f"{timestamp}_{base_name}"
+
+#     # Cria subpasta no Google Drive
+#     subfolder = drive.CreateFile({
+#         'title': folder_name,
+#         'mimeType': 'application/vnd.google-apps.folder',
+#         'parents': [{'id': parent_folder_id}]
+#     })
+#     subfolder.Upload()
+#     subfolder_id = subfolder['id']
+
+#     # Salva arquivo original temporariamente
+#     with open(filename, "wb") as f:
+#         f.write(file.getbuffer())
+
+#     # Upload do arquivo original
+#     gfile = drive.CreateFile({
+#         'title': filename,
+#         'parents': [{'id': subfolder_id}]
+#     })
+#     gfile.SetContentFile(filename)
+#     gfile.Upload()
+
+#     file_link = f"https://drive.google.com/file/d/{gfile['id']}/view"
+
+#     # ----------------------
+#     # Tenta gerar miniatura
+#     # ----------------------
+#     thumb_link = None  # <- Garantido, sempre existe
+#     try:
+#         img = Image.open(filename)
+#         img.thumbnail((280, 280))
+
+#         thumb_name = f"miniatura_{base_name}.png"
+#         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
+#         img.save(thumb_path, format="PNG")
+
+#         thumb_file = drive.CreateFile({
+#             'title': thumb_name,
+#             'parents': [{'id': subfolder_id}]
+#         })
+#         thumb_file.SetContentFile(thumb_path)
+#         thumb_file.Upload()
+
+#         thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
+
+#         os.remove(thumb_path)
+
+#     except Exception as e:
+#         st.warning(f"Miniatura não criada (imagem inválida ou outro erro): {e}")
+
+#     # Remove arquivo local original
+#     os.remove(filename)
+
+#     return file_link, thumb_link
 
 
 
@@ -466,7 +588,7 @@ with tab_acervo:
                         titulo_com_extensao = f"{titulo.strip()}{extensao}"
 
                         # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        file_link = upload_to_drive(arquivo, titulo_com_extensao, tipo)
+                        file_link, thumb_link = upload_to_drive(arquivo, titulo_com_extensao, tipo)
 
                         # Prepara o dicionário com os dados para salvar no MongoDB
                         data = {
@@ -479,6 +601,7 @@ with tab_acervo:
                             "tipo": tipo,
                             "enviado_por": st.session_state["nome"],
                             "link": file_link,
+                            "thumb_link": thumb_link,
                             "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
                         }
 
@@ -617,7 +740,7 @@ with tab_acervo:
 
 
     # 3. Cadastro de relatório ---------------------------------------------------------------------------
-    def enviar_relatorio(): #!!!!
+    def enviar_relatorio(): 
 
         # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
 
@@ -630,11 +753,11 @@ with tab_acervo:
 
         # Título da seção
         st.write('')
-        st.subheader("Cadastrar relatório")    #!!!!
+        st.subheader("Cadastrar relatório")    
 
         # ----- CAMPOS DO FORMULÁRIO -----
 
-        tipo_doc = "Relatório" #!!!!
+        tipo_doc = "Relatório" 
 
         # Campo de texto: título
         titulo = st.text_input("Título")
@@ -694,10 +817,10 @@ with tab_acervo:
                         titulo_com_extensao = f"{titulo.strip()}{extensao}"
 
                         # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        file_link = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
+                        file_link, thumb_link = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
 
                         # Prepara o dicionário com os dados para salvar no MongoDB
-                        data = {     #!!!!
+                        data = {     
                             "titulo": titulo,
                             "descricao": descricao,
                             "ano_publicacao": ano_publicacao,
@@ -706,12 +829,13 @@ with tab_acervo:
                             "organizacao": organizacao,
                             "tipo": tipo_doc,
                             "link": file_link,
+                            "thumb_link": thumb_link,
                             "enviado_por": st.session_state["nome"],
                             "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
                         }
 
                         # Insere o documento na coleção
-                        relatorios.insert_one(data)   #!!!!
+                        relatorios.insert_one(data)   
 
                         # Mostra mensagem de sucesso
                         st.success("Documento enviado com sucesso!")
@@ -768,6 +892,41 @@ with tab_acervo:
         # Campo de texto: título
         link_video = st.text_input("Link do vídeo")
 
+
+        # Obtendo a thumb do vídeo do youtube ------------------
+        def get_youtube_thumb(link: str, resolution="mqdefault"):
+            """
+            Retorna URL da miniatura do YouTube
+            resolution: default, mqdefault, mqdefault, sddefault, maxresdefault
+            """
+            if not link:
+                return None
+
+            # Extrai o ID do vídeo
+            video_id = None
+            # YouTube normal
+            m = re.search(r"v=([a-zA-Z0-9_-]{11})", link)
+            if m:
+                video_id = m.group(1)
+            # YouTube curto youtu.be
+            m = re.search(r"youtu\.be/([a-zA-Z0-9_-]{11})", link)
+            if m:
+                video_id = m.group(1)
+
+            if not video_id:
+                return None
+
+            # Monta link da thumbnail
+            return f"https://img.youtube.com/vi/{video_id}/{resolution}.jpg"
+
+        # Obtém URL da miniatura
+        thumb_link = get_youtube_thumb(link_video)
+
+        # --------------------------
+
+
+
+
         # Se o usuário escolheu cadastrar nova organização
         if "+ Cadastrar nova organização" in organizacao:
             cadastrar_organizacao()
@@ -794,12 +953,6 @@ with tab_acervo:
                 try:
                     with st.spinner('Enviando documento...'):
 
-                        # # Monta o nome do arquivo com a extensão original
-                        # extensao = os.path.splitext(arquivo.name)[1]
-                        # titulo_com_extensao = f"{titulo.strip()}{extensao}"
-
-                        # # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        # file_id = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
 
                         # Prepara o dicionário com os dados para salvar no MongoDB
                         data = {     #!!!!
@@ -811,6 +964,7 @@ with tab_acervo:
                             "organizacao": organizacao,
                             "tipo": tipo_doc,
                             "link": link_video,
+                            "thumb_link": thumb_link,
                             "enviado_por": st.session_state["nome"],
                             "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
                         }
@@ -1037,7 +1191,7 @@ with tab_acervo:
 
 
     # 7. Cadastro de mapa ---------------------------------------------------------------------------
-    def enviar_mapa(): #!!!!
+    def enviar_mapa(): 
 
         # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
 
@@ -1050,11 +1204,11 @@ with tab_acervo:
 
         # Título da seção
         st.write('')
-        st.subheader("Cadastrar mapa")    #!!!!
+        st.subheader("Cadastrar mapa")    
 
         # ----- CAMPOS DO FORMULÁRIO -----
 
-        tipo_doc = "Mapa" #!!!!
+        tipo_doc = "Mapa" 
 
         # Campo de texto: título
         titulo = st.text_input("Título")
@@ -1114,7 +1268,7 @@ with tab_acervo:
                         titulo_com_extensao = f"{titulo.strip()}{extensao}"
 
                         # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        file_link = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
+                        file_link, thumb_link = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
 
                         # Prepara o dicionário com os dados para salvar no MongoDB
                         data = {     #!!!!
@@ -1125,6 +1279,7 @@ with tab_acervo:
                             "autor": autor,
                             "organizacao": organizacao,
                             "tipo": tipo_doc,
+                            "thumb_link": thumb_link,
                             "link": file_link,
                             "enviado_por": st.session_state["nome"],
                             "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))

@@ -129,7 +129,7 @@ TIPOS_MIDIA_ICONE = {
 
 # ------------------ 1. FORMULÁRIO DE FILTROS ------------------ #
 with st.expander("Filtros"):
-    with st.form("form_filtros"):
+    with st.form("form_filtros", border=False):
 
         # Lista com ícones para exibir nas pills
         rotulos_com_icone = list(TIPOS_MIDIA.values())
@@ -171,7 +171,7 @@ with st.expander("Filtros"):
         col1, col2, col3 = st.columns(3)
         busca_texto = col1.text_input("Buscar palavra chave")
 
-        filtrar = st.form_submit_button("Filtrar", icon=":material/filter_list:")
+        filtrar = st.form_submit_button("Filtrar", icon=":material/filter_list:", type="primary")
 
 
 
@@ -256,7 +256,7 @@ if arquivos:
         for arq in arquivos:
 
 
-            with st.container(border=True, width=290, key=arq.get("_id", None)):
+            with st.container(border=True, width=280, key=arq.get("_id", None)):
 
                 tipo = arq.get("tipo", "Tipo não informado")
                 icon = TIPOS_MIDIA_ICONE.get(tipo, "folder")
@@ -266,26 +266,63 @@ if arquivos:
                 tema = arq.get("tema", "")
                 organizacao = arq.get("organizacao", "")
                 link = arq.get("link", "#")
-                thumb = arq.get("thumb_link", None)
+                thumb_link = arq.get("thumb_link", None)
 
                 st.write(f":material/{icon}: {tipo}")
 
                 # Mostrar miniatura
 
-                thumb_link = arq.get("thumb_link")
+                # thumb_link = arq.get("thumb_link")
+
 
                 if thumb_link:
                     try:
-                        # Extrair o ID do arquivo
-                        file_id = thumb_link.split("/d/")[1].split("/")[0]
+                        # --- Caso seja Google Drive ---
+                        if "drive.google.com" in thumb_link:
+                            file_id = None
+                            # extrair ID de /d/ID/
+                            if "/d/" in thumb_link:
+                                file_id = thumb_link.split("/d/")[1].split("/")[0]
+                            # extrair ID de ?id=ID
+                            elif "id=" in thumb_link:
+                                import re
+                                m = re.search(r"id=([a-zA-Z0-9_-]+)", thumb_link)
+                                if m:
+                                    file_id = m.group(1)
 
-                        # Use o link de miniatura, que costuma ser mais estável
-                        direct_url = f"https://drive.google.com/thumbnail?sz=w280&id={file_id}"
+                            if file_id:
+                                direct_url = f"https://drive.google.com/thumbnail?sz=w280&id={file_id}"
+                                st.image(direct_url, width=280)
+                            else:
+                                st.warning("ID do arquivo Drive não pôde ser extraído")
 
-                        st.image(direct_url, width=280)
+                        # --- Caso seja YouTube ---
+                        elif "img.youtube.com" in thumb_link:
+                            st.image(thumb_link, width=280)
+
+                        # --- Outros links (opcional) ---
+                        else:
+                            st.image(thumb_link, width=280)
 
                     except Exception as e:
                         st.warning(f"Erro ao exibir miniatura: {e}")
+
+
+
+
+
+                # if thumb_link:
+                #     try:
+                #         # Extrair o ID do arquivo
+                #         file_id = thumb_link.split("/d/")[1].split("/")[0]
+
+                #         # Use o link de miniatura, que costuma ser mais estável
+                #         direct_url = f"https://drive.google.com/thumbnail?sz=w280&id={file_id}"
+
+                #         st.image(direct_url, width=280)
+
+                #     except Exception as e:
+                #         st.warning(f"Erro ao exibir miniatura: {e}")
 
 
                 # texto
