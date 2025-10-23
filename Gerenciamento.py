@@ -51,32 +51,152 @@ pontos = db["pontos_de_interesse"]
 relatorios = db["relatorios"]
 pessoas = db["pessoas"]
 organizacoes = db["organizacoes"]
+projetos = db["projetos"]
 
 
 # --------------------------------------------------------------
 # Funções auxiliares
 # --------------------------------------------------------------
 
+
+# Mapeia tipos exibidos para as chaves das pastas no secrets
+TIPO_PASTA_MAP = {
+    "Publicação": "publicacoes",
+    "Imagem": "imagens",
+    "Mapa": "mapas",
+    "Relatório": "relatorios",
+    "Podcast": "podcasts",
+    "Site": "sites",
+    "Ponto de interesse": "pontos_interesse",
+    "Organização": "organizacoes",
+    "Projeto": "projetos"
+}
+
+
+
+
+
 @st.dialog("Cadastrar Organização")
 def cadastrar_organizacao():
     with st.form("Cadastro de Organização"):
+        # Campos básicos
         nome_organizacao = st.text_input("Nome da Organização")
         sigla = st.text_input("Sigla da Organização")
+        
+        # Campos complementares
+        descricao = st.text_area("Descrição")
+        tema = st.multiselect("Tema", temas_ordenados)
+        CNPJ = st.text_input("CNPJ")
+        websites = st.text_input("Websites (separados por vírgula)")
+        logotipo = st.file_uploader("Logotipo", type=["png", "jpg", "jpeg"])
+        documentos = st.file_uploader(
+            "Documentos da organização (Estatuto, CNPJ, etc)", 
+            accept_multiple_files=True, 
+            type=["pdf"]
+        )
 
+        # Botão de envio
         cadastrar = st.form_submit_button(":material/add: Cadastrar")
 
         if cadastrar:
-            # Verificação dos campos obrigatórios
+            # Validação mínima
             if not nome_organizacao.strip() or not sigla.strip():
-                st.error("Todos os campos são obrigatórios.")
-            else:
-                organizacoes.insert_one({
-                    "nome_organizacao": nome_organizacao.strip(),
-                    "email_organizacao": sigla.strip()
-                })
-                st.success("Organização cadastrada com sucesso!")
-                time.sleep(2)
-                st.rerun()
+                st.error("Todos os campos obrigatórios devem ser preenchidos.")
+                return
+
+            with st.spinner("Enviando..."):
+                try:
+                    # Autenticação do Google Drive
+                    drive = authenticate_drive()
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                    # Criar subpasta da organização
+                    parent_folder_id = st.secrets["pastas"].get("organizacoes")  # Ajuste conforme sua pasta
+                    subfolder_name = f"{timestamp}_{nome_organizacao.replace(' ', '_')}"
+                    subfolder = drive.CreateFile({
+                        "title": subfolder_name,
+                        "mimeType": "application/vnd.google-apps.folder",
+                        "parents": [{"id": parent_folder_id}]
+                    })
+                    subfolder.Upload()
+                    subfolder_id = subfolder["id"]
+
+                    # Upload do logotipo
+                    logotipo_link = None
+                    if logotipo:
+                        logotipo_path = os.path.join(tempfile.gettempdir(), logotipo.name)
+                        with open(logotipo_path, "wb") as f:
+                            f.write(logotipo.getbuffer())
+                        gfile_logo = drive.CreateFile({
+                            "title": logotipo.name,
+                            "parents": [{"id": subfolder_id}]
+                        })
+                        gfile_logo.SetContentFile(logotipo_path)
+                        gfile_logo.Upload()
+                        logotipo_link = f"https://drive.google.com/file/d/{gfile_logo['id']}/view"
+                        os.remove(logotipo_path)
+
+                    # Upload dos documentos
+                    documentos_links = []
+                    for doc in documentos or []:
+                        doc_path = os.path.join(tempfile.gettempdir(), doc.name)
+                        with open(doc_path, "wb") as f:
+                            f.write(doc.getbuffer())
+                        gfile_doc = drive.CreateFile({
+                            "title": doc.name,
+                            "parents": [{"id": subfolder_id}]
+                        })
+                        gfile_doc.SetContentFile(doc_path)
+                        gfile_doc.Upload()
+                        documentos_links.append(f"https://drive.google.com/file/d/{gfile_doc['id']}/view")
+                        os.remove(doc_path)
+
+                    # Salvar no MongoDB
+                    data = {
+                        "titulo": nome_organizacao.strip(),
+                        "sigla": sigla.strip(),
+                        "descricao": descricao,
+                        "tema": tema,
+                        "cnpj": CNPJ,
+                        "websites": websites,
+                        "logotipo": logotipo_link,
+                        "documentos": documentos_links,
+                        "subfolder_id": subfolder_id,
+                        "tipo": "Organização",
+                        "enviado_por": st.session_state.get("nome", "desconhecido"),
+                        "data_upload": datetime.now()
+                    }
+
+                    organizacoes.insert_one(data)
+                    st.success("Organização cadastrada com sucesso!")
+                    time.sleep(2)
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"Erro ao cadastrar organização: {e}")
+
+
+
+# @st.dialog("Cadastrar Organização")
+# def cadastrar_organizacao():
+#     with st.form("Cadastro de Organização"):
+#         nome_organizacao = st.text_input("Nome da Organização")
+#         sigla = st.text_input("Sigla da Organização")
+
+#         cadastrar = st.form_submit_button(":material/add: Cadastrar")
+
+#         if cadastrar:
+#             # Verificação dos campos obrigatórios
+#             if not nome_organizacao.strip() or not sigla.strip():
+#                 st.error("Todos os campos são obrigatórios.")
+#             else:
+#                 organizacoes.insert_one({
+#                     "nome_organizacao": nome_organizacao.strip(),
+#                     "email_organizacao": sigla.strip()
+#                 })
+#                 st.success("Organização cadastrada com sucesso!")
+#                 time.sleep(2)
+#                 st.rerun()
 
 
 # Função para autenticar Google Drive usando st.secrets
@@ -105,17 +225,7 @@ def authenticate_drive():
         drive = GoogleDrive(gauth)
         return drive
 
-# Mapeia tipos exibidos para as chaves das pastas no secrets
-TIPO_PASTA_MAP = {
-    "Publicação": "publicacoes",
-    "Imagem": "imagens",
-    "Mapa": "mapas",
-    "Relatório": "relatorios",
-    "Podcast": "podcasts",
-    "Site": "sites",
-    "Ponto de interesse": "pontos_interesse",
-    "Organização": "organizacoes",
-}
+
 
 
 
@@ -333,7 +443,9 @@ TIPOS_MIDIA = [
     "Site",
     "Mapa",
     "Legislacao",
-    "Ponto de interesse"
+    "Ponto de interesse",
+    "Organização",
+    "Projeto"
 ]
 # Temas
 TEMAS_BABACU = [
@@ -403,6 +515,7 @@ with tab_acervo:
 
         # Campos do formulário
         nome_organizacao = st.text_input("Nome da organização")
+        sigla = st.text_input("Sigla da organização")
         descricao = st.text_area("Descrição")
         tema = st.multiselect("Tema", temas_ordenados)
         CNPJ = st.text_input("CNPJ")
@@ -489,6 +602,7 @@ with tab_acervo:
                         "descricao": descricao,
                         "tema": tema,
                         "cnpj": CNPJ,
+                        "sigla": sigla,
                         "logotipo": logotipo_link,
                         "documentos": documentos_links,
                         "tipo": tipo_doc,
@@ -506,79 +620,6 @@ with tab_acervo:
 
 
 
-
-
-    # def enviar_organizacao(): 
-
-
-    #     # Título da seção
-    #     st.write('')
-    #     st.subheader("Cadastrar organização")    
-
-    #     # ----- CAMPOS DO FORMULÁRIO -----
-
-    #     tipo_doc = "Organização" 
-
-    #     # Campo de texto: título
-    #     nome_organicacao = st.text_input("Nome da organização")
-
-    #     # Campo de texto longo: descrição
-    #     descricao = st.text_area("Descrição")
-
-    #     # Campo multiselect para temas
-    #     tema = st.multiselect("Tema", temas_ordenados)
-
-    #     # Campo de texto: casa legislativa
-    #     CNPJ = st.text_input("Casa legislativa")
-
-    #     logotipo = st.file_uploader("Logotipo", type=["png", "jpg", "jpeg"])
-
-    #     documentos = st.file_uploader("Documentos da organização (Estatuto, CNPJ, etc)", accept_multiple_files=True, type=["pdf"])
-
-
-
-
-    #     # ----- BOTÃO DE ENVIO E COLUNAS -----
-
-    #     # Layout: duas colunas para botão e feedback
-    #     col1, col2 = st.columns([1, 6])
-    #     col1.write('')  # espaçamento
-
-    #     # Botão de envio
-    #     submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
-
-
-    #     # ----- LÓGICA DE SUBMISSÃO -----
-    #     if submitted:
-
-    #         # Validação: todos os campos obrigatórios devem estar preenchidos
-    #         if not nome_organicacao: 
-    #             st.error("Insira o nome da organização.")
-
-    #         with st.spinner('Enviando documento...'):
-
-
-    #                     # Prepara o dicionário com os dados para salvar no MongoDB
-    #                     data = {    
-    #                         "nome_organizacao": nome_organicacao,
-    #                         "descricao": descricao,
-    #                         "tema": tema,
-    #                         "cnpj": CNPJ,
-    #                         "logotipo": logotipo,
-    #                         "documentos": documentos,
-    #                         "tipo": tipo_doc,
-    #                         "enviado_por": st.session_state["nome"],
-    #                         "data_upload": datetime.now()
-
-    #                     }
-
-    #                     # Insere o documento na coleção
-    #                     legislacao.insert_one(data) 
-
-    #                     # Mostra mensagem de sucesso
-    #                     st.success("Documento enviado com sucesso!")
-
-            
 
 
 
@@ -1534,7 +1575,146 @@ with tab_acervo:
                 st.success("Ponto de interesse enviado com sucesso!")
 
 
+    # 10. Cadastro de projeto ---------------------------------------------------------------------------
+    def enviar_projeto(): 
+        st.write('')
+        st.subheader("Cadastrar projeto")    
 
+        tipo_doc = "Projeto" 
+
+        # Campos do formulário
+        
+        nome_projeto = st.text_input("Nome do projeto")
+        
+
+        # Pega as organizações cadastradas no MongoDB
+        organizacoes_disponiveis = sorted([doc.get("titulo") for doc in organizacoes.find()])
+
+        # Multiselect com opção de cadastrar nova organização
+        organizacao = st.multiselect(
+            "Organização responsável",
+            ["+ Cadastrar nova organização"] + organizacoes_disponiveis)
+        
+        # Se o usuário escolheu cadastrar nova organização
+        if "+ Cadastrar nova organização" in organizacao:
+            cadastrar_organizacao()
+
+        fonte_recursos = st.text_input("Fonte de recursos")
+        
+        # Datas
+        col1, col2 = st.columns(2)
+        data_inicio = col1.date_input("Data de inicio")
+        data_fim = col2.date_input("Data de fim")
+        # Converter para datetime
+        data_inicio = datetime(data_inicio.year, data_inicio.month, data_inicio.day)
+        data_fim = datetime(data_fim.year, data_fim.month, data_fim.day)
+       
+        objetivo = st.text_area("Objetivo Geral do projeto")
+        
+        descricao = st.text_area("Descrição")
+        tema = st.multiselect("Tema", temas_ordenados)
+        
+        website = st.text_input("Websites (separados por vírgula)")
+        
+        documentos = st.file_uploader(
+            "Documentos do projeto", 
+            accept_multiple_files=True, 
+            type=["pdf", "png", "jpg"]
+        )
+
+        # Botão de envio
+        col1, col2 = st.columns([1, 6])
+        col1.write('')
+        submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
+
+        if submitted:
+            if not nome_projeto:
+                st.error("Insira o nome do projeto.")
+                return
+
+            with st.spinner('Enviando ...'):
+                try:
+                    drive = authenticate_drive()
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                    # pegar a correspondência de tipo_doc em TIPO_PASTA_MAP
+                    tipo_key = TIPO_PASTA_MAP.get(tipo_doc)
+                    
+
+
+                    parent_folder_id = st.secrets["pastas"].get(tipo_key)
+                    if not parent_folder_id:
+                        st.error(f"Pasta para tipo '{tipo_doc}' não configurada no secrets.")
+                        return
+
+                    # Criar subpasta do projeto
+                    subfolder_name = f"{timestamp}_{nome_projeto.replace(' ', '_')}"
+                    subfolder = drive.CreateFile({
+                        "title": subfolder_name,
+                        "mimeType": "application/vnd.google-apps.folder",
+                        "parents": [{"id": parent_folder_id}]
+                    })
+                    subfolder.Upload()
+                    subfolder_id = subfolder["id"]
+
+                    # # --- Upload do logotipo ---
+                    # logotipo_link = None
+                    # if logotipo:
+                    #     logotipo_name = logotipo.name
+                    #     logotipo_path = os.path.join(tempfile.gettempdir(), logotipo_name)
+                    #     with open(logotipo_path, "wb") as f:
+                    #         f.write(logotipo.getbuffer())
+                        
+                    #     gfile_logo = drive.CreateFile({
+                    #         "title": logotipo_name,
+                    #         "parents": [{"id": subfolder_id}]
+                    #     })
+                    #     gfile_logo.SetContentFile(logotipo_path)
+                    #     gfile_logo.Upload()
+                    #     logotipo_link = f"https://drive.google.com/file/d/{gfile_logo['id']}/view"
+                    #     os.remove(logotipo_path)
+
+                    # --- Upload dos documentos ---
+                    documentos_links = []
+                    for doc in documentos or []:
+                        doc_name = doc.name
+                        doc_path = os.path.join(tempfile.gettempdir(), doc_name)
+                        with open(doc_path, "wb") as f:
+                            f.write(doc.getbuffer())
+                        
+                        gfile_doc = drive.CreateFile({
+                            "title": doc_name,
+                            "parents": [{"id": subfolder_id}]
+                        })
+                        gfile_doc.SetContentFile(doc_path)
+                        gfile_doc.Upload()
+                        documentos_links.append(f"https://drive.google.com/file/d/{gfile_doc['id']}/view")
+                        os.remove(doc_path)
+
+                    # --- Salvar no MongoDB ---
+                    data = {    
+                        "titulo": nome_projeto,
+                        "descricao": descricao,
+                        "tema": tema,
+                        "objetivo": objetivo,
+                        "documentos": documentos_links,
+                        "tipo": tipo_doc,
+                        "fonte_recursos": fonte_recursos,
+                        "data_inicio": data_inicio,
+                        "data_fim": data_fim,
+                        "website": website,
+                        "subfolder_id": subfolder_id,
+                        "enviado_por": st.session_state["nome"],
+                        "data_upload": datetime.now()
+                    }
+
+                    projetos.insert_one(data)
+                    st.success("Projeto cadastrado com sucesso!")
+
+                except Exception as e:
+                    st.error(f"Erro no upload: {e}")
+
+        
 
 
 
@@ -1555,7 +1735,8 @@ with tab_acervo:
             "Site": ":material/language: Site",
             "Mapa": ":material/map: Mapa",
             "Legislação": ":material/balance: Legislação",
-            "Ponto de interesse": ":material/location_on: Ponto de interesse"
+            "Ponto de interesse": ":material/location_on: Ponto de interesse",
+            "Projeto": ":material/assignment: Projeto"
         }
 
         # 2. Lista de rótulos com ícones
@@ -1595,6 +1776,8 @@ with tab_acervo:
             enviar_legislacao()
         elif midia_selecionada == "Ponto de interesse":
             enviar_ponto()
+        elif midia_selecionada == "Projeto":
+            enviar_projeto()
 
 
     elif acao == "Editar um documento":

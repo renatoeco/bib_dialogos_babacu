@@ -28,6 +28,7 @@ pontos = db["pontos_de_interesse"]
 relatorios = db["relatorios"]
 pessoas = db["pessoas"]
 organizacoes = db["organizacoes"]
+projetos = db["projetos"]
 
 # -------------------------------
 
@@ -112,7 +113,8 @@ TIPOS_MIDIA = {
     "Mapa": ":material/map: Mapa",
     "Legislação": ":material/balance: Legislação",
     "Ponto de interesse": ":material/location_on: Ponto de interesse",
-    "Organização": ":material/things_to_do: Organização"
+    "Organização": ":material/things_to_do: Organização",
+    "Projetos": ":material/assignment: Projetos"
 }
 
 TIPOS_MIDIA_ICONE = {
@@ -125,7 +127,8 @@ TIPOS_MIDIA_ICONE = {
     "Mapa": "map",
     "Legislação": "balance",
     "Ponto de interesse": "location_on",
-    "Organização": "things_to_do"
+    "Organização": "things_to_do",
+    "Projeto": "assignment"
 }
 
 
@@ -158,10 +161,11 @@ with st.expander("Filtros"):
         temas_pontos = pontos.distinct("tema")
         temas_relatorios = relatorios.distinct("tema")
         temas_organizacoes = organizacoes.distinct("tema")
+        temas_projetos = projetos.distinct("tema")
 
         todos_os_temas = set(
             temas_publicacoes + temas_imagens + temas_videos + temas_podcasts +
-            temas_sites + temas_mapas + temas_legislacao + temas_pontos + temas_relatorios + temas_organizacoes
+            temas_sites + temas_mapas + temas_legislacao + temas_pontos + temas_relatorios + temas_organizacoes + temas_projetos
         )
         temas_disponiveis = sorted(todos_os_temas)
 
@@ -191,6 +195,7 @@ def buscar_arquivos(query={}):
     docs_pontos = list(pontos.find(query))
     docs_relatorios = list(relatorios.find(query))
     docs_organizacoes = list(organizacoes.find(query))
+    docs_projetos = list(projetos.find(query))
 
     for doc in docs_publicacoes: doc["_colecao"] = "publicacoes"
     for doc in docs_imagens: doc["_colecao"] = "imagens"
@@ -202,10 +207,11 @@ def buscar_arquivos(query={}):
     for doc in docs_pontos: doc["_colecao"] = "pontos_de_interesse"
     for doc in docs_relatorios: doc["_colecao"] = "relatorios"
     for doc in docs_organizacoes: doc["_colecao"] = "organizacoes"
+    for doc in docs_projetos: doc["_colecao"] = "projetos"
 
     arquivos_resultado = (
         docs_publicacoes + docs_imagens + docs_videos + docs_podcasts +
-        docs_sites + docs_mapas + docs_legislacao + docs_pontos + docs_relatorios + docs_organizacoes
+        docs_sites + docs_mapas + docs_legislacao + docs_pontos + docs_relatorios + docs_organizacoes + docs_projetos
     )
 
 # ??????????????????????????
@@ -271,8 +277,10 @@ if arquivos:
 
             with st.container(border=True, width=280, height=500, key=arq.get("_id", None)):
 
+                # st.write(arq)
+
                 tipo = arq.get("tipo", "Tipo não informado")
-                icon = TIPOS_MIDIA_ICONE.get(tipo, "things_to_do")
+                icon = TIPOS_MIDIA_ICONE.get(tipo, "")
                 titulo = arq.get("titulo", "Sem título")
                 descricao = arq.get("descricao", "Sem descrição")
                 autor = arq.get("autor", "Autor desconhecido")
@@ -282,6 +290,8 @@ if arquivos:
                 thumb_link = arq.get("thumb_link", None)
 
                 st.write(f":material/{icon}: {tipo}")
+
+
 
                 # Mostrar miniatura -------------------------
 
@@ -297,8 +307,21 @@ if arquivos:
                         """, unsafe_allow_html=True)
 
 
-                # Renderiza logotipo
+                # Renderiza icone assignment
+                if tipo == "Projeto":
+                    st.markdown("""
+                        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+                        <div style="text-align:center; margin: 40px 0;">
+                            <span class="material-icons" style="font-size: 100px; color: #777;">
+                                assignment
+                            </span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+
                 if tipo == "Organização":
+
+                    # Renderiza logotipo
                     logotipo_link = arq.get("logotipo", None)
 
                     if logotipo_link and "drive.google.com" in logotipo_link:
@@ -358,13 +381,20 @@ if arquivos:
 
                 # texto
                 st.markdown(f"<h5 style='margin-bottom: 0.5rem'>{titulo}</h5>", unsafe_allow_html=True)
+                sigla_container = st.container()
                 st.write(descricao)
-                st.write(f"**Autor:** {autor}")
+                autor_container = st.container()
                 st.write(f"**Organização:** {organizacao}")
-                st.write(f"**Descrição:** {descricao}")
                 st.write(f"**Tema:** {tema}")
                 
+                # Se for organização ou projeto, não tem autor
+                if tipo != "Organização" and tipo != "Projeto":
+                    autor_container.write(f"**Autor:** {autor}")
+
                 if tipo == "Organização":
+                    # Mostra a sigla
+                    sigla = arq.get("sigla", None)
+                    sigla_container.write(f"**Sigla:** {sigla}")
                     
                     # Websites
                     st.write(f"**Websites:** {arq.get('websites', 'N/A')}")
