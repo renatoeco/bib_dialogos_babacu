@@ -114,6 +114,7 @@ TIPO_PASTA_MAP = {
     "Podcast": "podcasts",
     "Site": "sites",
     "Ponto de interesse": "pontos_interesse",
+    "Organização": "organizacoes",
 }
 
 
@@ -389,6 +390,197 @@ with tab_acervo:
 
     # Adiciona uma opção vazia no início
     temas_ordenados = [""] + temas_ordenados
+
+
+    # 0. Cadastro de organização ---------------------------------------------------------------------------
+
+
+    def enviar_organizacao(): 
+        st.write('')
+        st.subheader("Cadastrar organização")    
+
+        tipo_doc = "Organização" 
+
+        # Campos do formulário
+        nome_organizacao = st.text_input("Nome da organização")
+        descricao = st.text_area("Descrição")
+        tema = st.multiselect("Tema", temas_ordenados)
+        CNPJ = st.text_input("CNPJ")
+        websites = st.text_input("Websites (separados por vírgula)")
+        logotipo = st.file_uploader("Logotipo", type=["png", "jpg", "jpeg"])
+        documentos = st.file_uploader(
+            "Documentos da organização (Estatuto, CNPJ, etc)", 
+            accept_multiple_files=True, 
+            type=["pdf"]
+        )
+
+        # Botão de envio
+        col1, col2 = st.columns([1, 6])
+        col1.write('')
+        submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
+
+        if submitted:
+            if not nome_organizacao:
+                st.error("Insira o nome da organização.")
+                return
+
+            with st.spinner('Enviando ...'):
+                try:
+                    drive = authenticate_drive()
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                    # pegar a correspondência de tipo_doc em TIPO_PASTA_MAP
+                    tipo_key = TIPO_PASTA_MAP.get(tipo_doc)
+                    
+
+
+                    parent_folder_id = st.secrets["pastas"].get(tipo_key)
+                    if not parent_folder_id:
+                        st.error(f"Pasta para tipo '{tipo_doc}' não configurada no secrets.")
+                        return
+
+                    # Criar subpasta da organização
+                    subfolder_name = f"{timestamp}_{nome_organizacao.replace(' ', '_')}"
+                    subfolder = drive.CreateFile({
+                        "title": subfolder_name,
+                        "mimeType": "application/vnd.google-apps.folder",
+                        "parents": [{"id": parent_folder_id}]
+                    })
+                    subfolder.Upload()
+                    subfolder_id = subfolder["id"]
+
+                    # --- Upload do logotipo ---
+                    logotipo_link = None
+                    if logotipo:
+                        logotipo_name = logotipo.name
+                        logotipo_path = os.path.join(tempfile.gettempdir(), logotipo_name)
+                        with open(logotipo_path, "wb") as f:
+                            f.write(logotipo.getbuffer())
+                        
+                        gfile_logo = drive.CreateFile({
+                            "title": logotipo_name,
+                            "parents": [{"id": subfolder_id}]
+                        })
+                        gfile_logo.SetContentFile(logotipo_path)
+                        gfile_logo.Upload()
+                        logotipo_link = f"https://drive.google.com/file/d/{gfile_logo['id']}/view"
+                        os.remove(logotipo_path)
+
+                    # --- Upload dos documentos ---
+                    documentos_links = []
+                    for doc in documentos or []:
+                        doc_name = doc.name
+                        doc_path = os.path.join(tempfile.gettempdir(), doc_name)
+                        with open(doc_path, "wb") as f:
+                            f.write(doc.getbuffer())
+                        
+                        gfile_doc = drive.CreateFile({
+                            "title": doc_name,
+                            "parents": [{"id": subfolder_id}]
+                        })
+                        gfile_doc.SetContentFile(doc_path)
+                        gfile_doc.Upload()
+                        documentos_links.append(f"https://drive.google.com/file/d/{gfile_doc['id']}/view")
+                        os.remove(doc_path)
+
+                    # --- Salvar no MongoDB ---
+                    data = {    
+                        "titulo": nome_organizacao,
+                        "descricao": descricao,
+                        "tema": tema,
+                        "cnpj": CNPJ,
+                        "logotipo": logotipo_link,
+                        "documentos": documentos_links,
+                        "tipo": tipo_doc,
+                        "websites": websites,
+                        "subfolder_id": subfolder_id,
+                        "enviado_por": st.session_state["nome"],
+                        "data_upload": datetime.now()
+                    }
+
+                    organizacoes.insert_one(data)
+                    st.success("Organização cadastrada com sucesso!")
+
+                except Exception as e:
+                    st.error(f"Erro no upload: {e}")
+
+
+
+
+
+    # def enviar_organizacao(): 
+
+
+    #     # Título da seção
+    #     st.write('')
+    #     st.subheader("Cadastrar organização")    
+
+    #     # ----- CAMPOS DO FORMULÁRIO -----
+
+    #     tipo_doc = "Organização" 
+
+    #     # Campo de texto: título
+    #     nome_organicacao = st.text_input("Nome da organização")
+
+    #     # Campo de texto longo: descrição
+    #     descricao = st.text_area("Descrição")
+
+    #     # Campo multiselect para temas
+    #     tema = st.multiselect("Tema", temas_ordenados)
+
+    #     # Campo de texto: casa legislativa
+    #     CNPJ = st.text_input("Casa legislativa")
+
+    #     logotipo = st.file_uploader("Logotipo", type=["png", "jpg", "jpeg"])
+
+    #     documentos = st.file_uploader("Documentos da organização (Estatuto, CNPJ, etc)", accept_multiple_files=True, type=["pdf"])
+
+
+
+
+    #     # ----- BOTÃO DE ENVIO E COLUNAS -----
+
+    #     # Layout: duas colunas para botão e feedback
+    #     col1, col2 = st.columns([1, 6])
+    #     col1.write('')  # espaçamento
+
+    #     # Botão de envio
+    #     submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
+
+
+    #     # ----- LÓGICA DE SUBMISSÃO -----
+    #     if submitted:
+
+    #         # Validação: todos os campos obrigatórios devem estar preenchidos
+    #         if not nome_organicacao: 
+    #             st.error("Insira o nome da organização.")
+
+    #         with st.spinner('Enviando documento...'):
+
+
+    #                     # Prepara o dicionário com os dados para salvar no MongoDB
+    #                     data = {    
+    #                         "nome_organizacao": nome_organicacao,
+    #                         "descricao": descricao,
+    #                         "tema": tema,
+    #                         "cnpj": CNPJ,
+    #                         "logotipo": logotipo,
+    #                         "documentos": documentos,
+    #                         "tipo": tipo_doc,
+    #                         "enviado_por": st.session_state["nome"],
+    #                         "data_upload": datetime.now()
+
+    #                     }
+
+    #                     # Insere o documento na coleção
+    #                     legislacao.insert_one(data) 
+
+    #                     # Mostra mensagem de sucesso
+    #                     st.success("Documento enviado com sucesso!")
+
+            
+
+
 
 
     # 1. Cadastro de publicação ---------------------------------------------------------------------------
@@ -961,9 +1153,6 @@ with tab_acervo:
 
 
 
-
-
-
     # 6. Cadastro de site ---------------------------------------------------------------------------
 
     def enviar_site(): 
@@ -1039,12 +1228,6 @@ with tab_acervo:
 
                 sites.insert_one(data)
                 st.success("Site cadastrado com sucesso!")
-
-
-
-
-
-
 
 
 
@@ -1356,12 +1539,14 @@ with tab_acervo:
 
 
 
+
     if acao == "Cadastrar documento":
         # Escolha do tipo de mídia
 
 
         # 1. Dicionário: valor real -> rótulo com ícone
         TIPOS_MIDIA = {
+            "Organização": ":material/things_to_do: Organização",
             "Publicação": ":material/menu_book: Publicação",
             "Imagem": ":material/add_a_photo: Imagem",
             "Relatório": ":material/assignment: Relatório",
@@ -1390,8 +1575,9 @@ with tab_acervo:
         )
 
   
-
-        if midia_selecionada == "Publicação":
+        if midia_selecionada == "Organização":
+            enviar_organizacao()
+        elif midia_selecionada == "Publicação":
             enviar_publicacao()
         elif midia_selecionada == "Imagem":
             enviar_imagem()

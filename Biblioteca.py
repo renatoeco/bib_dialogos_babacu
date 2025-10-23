@@ -111,7 +111,8 @@ TIPOS_MIDIA = {
     "Site": ":material/language: Site",
     "Mapa": ":material/map: Mapa",
     "Legislação": ":material/balance: Legislação",
-    "Ponto de interesse": ":material/location_on: Ponto de interesse"
+    "Ponto de interesse": ":material/location_on: Ponto de interesse",
+    "Organização": ":material/things_to_do: Organização"
 }
 
 TIPOS_MIDIA_ICONE = {
@@ -123,7 +124,8 @@ TIPOS_MIDIA_ICONE = {
     "Site": "language",
     "Mapa": "map",
     "Legislação": "balance",
-    "Ponto de interesse": "location_on"
+    "Ponto de interesse": "location_on",
+    "Organização": "things_to_do"
 }
 
 
@@ -155,10 +157,11 @@ with st.expander("Filtros"):
         temas_legislacao = legislacao.distinct("tema")
         temas_pontos = pontos.distinct("tema")
         temas_relatorios = relatorios.distinct("tema")
+        temas_organizacoes = organizacoes.distinct("tema")
 
         todos_os_temas = set(
             temas_publicacoes + temas_imagens + temas_videos + temas_podcasts +
-            temas_sites + temas_mapas + temas_legislacao + temas_pontos + temas_relatorios
+            temas_sites + temas_mapas + temas_legislacao + temas_pontos + temas_relatorios + temas_organizacoes
         )
         temas_disponiveis = sorted(todos_os_temas)
 
@@ -187,6 +190,7 @@ def buscar_arquivos(query={}):
     docs_legislacao = list(legislacao.find(query))
     docs_pontos = list(pontos.find(query))
     docs_relatorios = list(relatorios.find(query))
+    docs_organizacoes = list(organizacoes.find(query))
 
     for doc in docs_publicacoes: doc["_colecao"] = "publicacoes"
     for doc in docs_imagens: doc["_colecao"] = "imagens"
@@ -197,12 +201,21 @@ def buscar_arquivos(query={}):
     for doc in docs_legislacao: doc["_colecao"] = "legislacao"
     for doc in docs_pontos: doc["_colecao"] = "pontos_de_interesse"
     for doc in docs_relatorios: doc["_colecao"] = "relatorios"
+    for doc in docs_organizacoes: doc["_colecao"] = "organizacoes"
 
     arquivos_resultado = (
         docs_publicacoes + docs_imagens + docs_videos + docs_podcasts +
-        docs_sites + docs_mapas + docs_legislacao + docs_pontos + docs_relatorios
+        docs_sites + docs_mapas + docs_legislacao + docs_pontos + docs_relatorios + docs_organizacoes
     )
+
+# ??????????????????????????
+    # st.write('docs_relatorios', docs_relatorios)
+    # st.write('docs_organizacoes', docs_organizacoes)
+
     return arquivos_resultado
+
+
+
 
 # Consulta inicial (sem filtros)
 arquivos = buscar_arquivos()
@@ -259,7 +272,7 @@ if arquivos:
             with st.container(border=True, width=280, height=500, key=arq.get("_id", None)):
 
                 tipo = arq.get("tipo", "Tipo não informado")
-                icon = TIPOS_MIDIA_ICONE.get(tipo, "folder")
+                icon = TIPOS_MIDIA_ICONE.get(tipo, "things_to_do")
                 titulo = arq.get("titulo", "Sem título")
                 descricao = arq.get("descricao", "Sem descrição")
                 autor = arq.get("autor", "Autor desconhecido")
@@ -270,9 +283,9 @@ if arquivos:
 
                 st.write(f":material/{icon}: {tipo}")
 
-                # Mostrar miniatura
+                # Mostrar miniatura -------------------------
 
-
+                # Renderiza icone balance
                 if tipo == "Legislação":
                     st.markdown("""
                         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -284,6 +297,28 @@ if arquivos:
                         """, unsafe_allow_html=True)
 
 
+                # Renderiza logotipo
+                if tipo == "Organização":
+                    logotipo_link = arq.get("logotipo", None)
+
+                    if logotipo_link and "drive.google.com" in logotipo_link:
+                                file_id = None
+                                if "/d/" in logotipo_link:
+                                    file_id = logotipo_link.split("/d/")[1].split("/")[0]
+                                elif "id=" in logotipo_link:
+                                    import re
+                                    m = re.search(r"id=([a-zA-Z0-9_-]+)", logotipo_link)
+                                    if m:
+                                        file_id = m.group(1)
+
+                                if file_id:
+                                    direct_url = f"https://drive.google.com/thumbnail?sz=w280&id={file_id}"
+                                    st.image(direct_url, width=280)
+                                else:
+                                    st.warning("Não foi possível extrair o ID do logotipo.")
+
+
+                # Renderiza miniatura
                 if thumb_link:
                 
                     try:
@@ -318,21 +353,7 @@ if arquivos:
                         st.warning(f"Erro ao exibir miniatura: {e}")
 
 
-
-
-
-                # if thumb_link:
-                #     try:
-                #         # Extrair o ID do arquivo
-                #         file_id = thumb_link.split("/d/")[1].split("/")[0]
-
-                #         # Use o link de miniatura, que costuma ser mais estável
-                #         direct_url = f"https://drive.google.com/thumbnail?sz=w280&id={file_id}"
-
-                #         st.image(direct_url, width=280)
-
-                #     except Exception as e:
-                #         st.warning(f"Erro ao exibir miniatura: {e}")
+                # ---------------------------------------------
 
 
                 # texto
@@ -340,41 +361,25 @@ if arquivos:
                 st.write(descricao)
                 st.write(f"**Autor:** {autor}")
                 st.write(f"**Organização:** {organizacao}")
+                st.write(f"**Descrição:** {descricao}")
                 st.write(f"**Tema:** {tema}")
-                st.link_button("Ver detalhes", url=link, type="primary")
+                
+                if tipo == "Organização":
+                    
+                    # Websites
+                    st.write(f"**Websites:** {arq.get('websites', 'N/A')}")
+
+                    # Link para a pasta com vários arquivos
+                    subfolder_id = arq.get("subfolder_id", "")
+                    link = f"https://drive.google.com/drive/folders/{subfolder_id}"
+                    st.link_button("Ver detalhes", url=link, type="primary")
+
+                else:
+                    st.link_button("Ver detalhes", url=link, type="primary")
 
 
 
 
-
-
-
-
-            # with st.container(border=True, width=290, key=arq.get("_id", None)):
-
-
-            #     tipo = arq.get("tipo", "Tipo não informado")
-            #     icon = TIPOS_MIDIA_ICONE.get(tipo, "folder")
-            #     titulo = arq.get("titulo", "Sem título")
-            #     descricao = arq.get("descricao", "Sem descrição")
-            #     autor = arq.get("autor", "Autor desconhecido")
-            #     tema = arq.get("tema", "")
-            #     organizacao = arq.get("organizacao", "")
-            #     link = arq.get("link", "#")
-
-            #     st.write(f":material/{icon}: {tipo}")
-
-            #     # imagem
-            #     #
-
-            #     st.markdown(f"<h5 style='margin-bottom: 0.5rem'>{titulo}</h5>", unsafe_allow_html=True)
-            #     st.write(descricao)
-            #     st.write(f"**Autor:** {autor}")
-            #     st.write(f"**Organização:** {organizacao}")
-            #     st.write(f"**Tema:** {tema}")
-            #     st.link_button("Ver detalhes", url=link, type="primary")
-
-            #     st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     st.info("Nenhum arquivo encontrado para os filtros aplicados.")
