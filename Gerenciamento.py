@@ -1200,7 +1200,7 @@ with tab_acervo:
         tema = st.multiselect("Tema", temas_ordenados)
         autor = st.text_input("Autor(es) / Autora(s)")
 
-        organizacoes_disponiveis = sorted([doc.get("nome_organizacao") for doc in organizacoes.find()])
+        organizacoes_disponiveis = sorted([doc.get("titulo") for doc in organizacoes.find()])
         organizacao = st.multiselect(
             "Organização responsável",
             ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis
