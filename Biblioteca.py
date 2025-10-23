@@ -256,7 +256,7 @@ if arquivos:
         for arq in arquivos:
 
 
-            with st.container(border=True, width=280, key=arq.get("_id", None)):
+            with st.container(border=True, width=280, height=500, key=arq.get("_id", None)):
 
                 tipo = arq.get("tipo", "Tipo não informado")
                 icon = TIPOS_MIDIA_ICONE.get(tipo, "folder")
@@ -272,10 +272,20 @@ if arquivos:
 
                 # Mostrar miniatura
 
-                # thumb_link = arq.get("thumb_link")
+
+                if tipo == "Legislação":
+                    st.markdown("""
+                        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+                        <div style="text-align:center; margin: 40px 0;">
+                            <span class="material-icons" style="font-size: 100px; color: #777;">
+                                balance
+                            </span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
 
                 if thumb_link:
+                
                     try:
                         # --- Caso seja Google Drive ---
                         if "drive.google.com" in thumb_link:

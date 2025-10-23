@@ -1,18 +1,36 @@
-import streamlit as st
-from datetime import datetime, UTC
-from pymongo import MongoClient
-import time
+# ------------------ Bibliotecas padrão (Python) ------------------ #
 import os
+import re
+import time
+import json
+import tempfile
+from datetime import datetime, UTC
+from zoneinfo import ZoneInfo
+from io import BytesIO
+
+
+# ------------------ Bibliotecas de terceiros ------------------ #
+import streamlit as st
+from pymongo import MongoClient
+from PIL import Image
+from pdf2image import convert_from_path
+
+# Google Drive API
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
-import tempfile
-import json
-from zoneinfo import ZoneInfo
-from pdf2image import convert_from_path
-import re
 
-from PIL import Image
-# from pydrive.drive import GoogleDrive
+# Selenium e WebDriver
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+
+
+
+
 
 # --------------------------------------------------------------
 # Configurações do MongoDB
@@ -92,13 +110,125 @@ TIPO_PASTA_MAP = {
     "Publicação": "publicacoes",
     "Imagem": "imagens",
     "Mapa": "mapas",
-    "Relatório": "relatorios"
+    "Relatório": "relatorios",
+    "Podcast": "podcasts",
+    "Site": "sites",
+    "Ponto de interesse": "pontos_interesse",
 }
 
 
 
+# Função para raspar o screenshot de um site
 
 
+def gerar_thumbnail_pagina(url, nome_base):
+    """
+    Acessa a URL e salva um screenshot da tela de forma confiável.
+    Retorna caminho do arquivo gerado.
+    """
+    try:
+        # Configurações do Chrome
+        options = Options()
+        options.add_argument("--headless=new")  # Headless moderno
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-dev-shm-usage")  # Crucial em Linux
+        options.add_argument("--no-sandbox")
+        options.add_argument("--window-size=1366,768")   # Tamanho real de tela
+        options.add_argument("--hide-scrollbars")
+        options.add_argument("--disable-infobars")
+
+        # Inicia navegador automaticamente compatível
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=options
+        )
+
+        # Acessa a página
+        driver.get(url)
+
+        # Espera o corpo da página carregar (até 10s)
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
+        except:
+            pass  # Continua mesmo assim se não carregar
+
+        # Espera um pouco para JS terminar de renderizar
+        time.sleep(2)
+
+        # Salva o screenshot em arquivo temporário
+        thumb_path = os.path.join(tempfile.gettempdir(), f"{nome_base}.png")
+        driver.save_screenshot(thumb_path)
+
+        driver.quit()
+        return thumb_path
+
+    except Exception as e:
+        st.error(f"Erro ao capturar miniatura: {e}")
+        return None
+
+
+
+
+
+
+
+
+
+# Envia só a thumbnail / miniatura para o drive
+
+def upload_thumbnail_to_drive(local_path, nome_base, tipo):
+    """
+    Envia uma imagem (miniatura) ao Google Drive SEM alterar upload_to_drive original.
+    Retorna o link da miniatura.
+    """
+    try:
+        drive = authenticate_drive()
+
+        # Pega a pasta correta no Drive
+        tipo_key = TIPO_PASTA_MAP.get(tipo)
+        parent_folder_id = st.secrets["pastas"].get(tipo_key)
+
+        if not parent_folder_id:
+            st.error(f"Pasta do tipo {tipo} não configurada no secrets.")
+            return None
+
+        # Cria subpasta com timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = f"{timestamp}_{nome_base}"
+
+        subfolder = drive.CreateFile({
+            'title': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [{'id': parent_folder_id}]
+        })
+        subfolder.Upload()
+        subfolder_id = subfolder['id']
+
+        # Nome da thumbnail
+        thumb_name = f"miniatura_{nome_base}.png"
+
+        thumb_file = drive.CreateFile({
+            'title': thumb_name,
+            'parents': [{'id': subfolder_id}]
+        })
+        thumb_file.SetContentFile(local_path)
+        thumb_file.Upload()
+
+        thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
+        return thumb_link
+
+    except Exception as e:
+        st.error(f"Erro ao enviar miniatura: {e}")
+        return None
+
+
+
+
+
+
+# Envia o arquivo e a miniatura para o drive
 def upload_to_drive(file, filename, tipo):
     if tipo not in TIPO_PASTA_MAP:
         return None, None
@@ -161,21 +291,6 @@ def upload_to_drive(file, filename, tipo):
                 img = img.resize((280, new_height), Image.Resampling.LANCZOS)
                 img.save(thumb_path, "PNG")
 
-
-        # # ✅ Se for imagem
-        # if ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
-        #     img = Image.open(filename)
-        #     img.thumbnail((280, 280))
-        #     img.save(thumb_path, "PNG")
-
-        # # ✅ Se for PDF → pega primeira página
-        # elif ext.lower() == '.pdf':
-        #     pages = convert_from_path(filename, dpi=150, first_page=1, last_page=1)
-        #     if pages:
-        #         img = pages[0]
-        #         img.thumbnail((280, 280))
-        #         img.save(thumb_path, "PNG")
-
         # Se gerou thumb, faz upload no Drive
         if os.path.exists(thumb_path):
             thumb_file = drive.CreateFile({
@@ -194,252 +309,6 @@ def upload_to_drive(file, filename, tipo):
     os.remove(filename)
 
     return file_link, thumb_link
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# def upload_to_drive(file, filename, tipo):
-#     if tipo not in TIPO_PASTA_MAP:
-#         return None, None
-
-#     tipo_key = TIPO_PASTA_MAP[tipo]
-#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
-
-#     if not parent_folder_id:
-#         st.error(f"Pasta não configurada no secrets: {tipo_key}")
-#         return None, None
-
-#     drive = authenticate_drive()
-
-#     base_name, ext = os.path.splitext(filename)
-#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#     folder_name = f"{timestamp}_{base_name}"
-
-#     # Cria subpasta no Google Drive
-#     subfolder = drive.CreateFile({
-#         'title': folder_name,
-#         'mimeType': 'application/vnd.google-apps.folder',
-#         'parents': [{'id': parent_folder_id}]
-#     })
-#     subfolder.Upload()
-#     subfolder_id = subfolder['id']
-
-#     # Salva arquivo original temporariamente
-#     with open(filename, "wb") as f:
-#         f.write(file.getbuffer())
-
-#     # Upload do arquivo original
-#     gfile = drive.CreateFile({
-#         'title': filename,
-#         'parents': [{'id': subfolder_id}]
-#     })
-#     gfile.SetContentFile(filename)
-#     gfile.Upload()
-
-#     file_link = f"https://drive.google.com/file/d/{gfile['id']}/view"
-
-#     # ----------------------
-#     # Tenta gerar miniatura
-#     # ----------------------
-#     thumb_link = None  # <- Garantido, sempre existe
-#     try:
-#         img = Image.open(filename)
-#         img.thumbnail((280, 280))
-
-#         thumb_name = f"miniatura_{base_name}.png"
-#         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
-#         img.save(thumb_path, format="PNG")
-
-#         thumb_file = drive.CreateFile({
-#             'title': thumb_name,
-#             'parents': [{'id': subfolder_id}]
-#         })
-#         thumb_file.SetContentFile(thumb_path)
-#         thumb_file.Upload()
-
-#         thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
-
-#         os.remove(thumb_path)
-
-#     except Exception as e:
-#         st.warning(f"Miniatura não criada (imagem inválida ou outro erro): {e}")
-
-#     # Remove arquivo local original
-#     os.remove(filename)
-
-#     return file_link, thumb_link
-
-
-
-
-
-
-
-
-# def upload_to_drive(file, filename, tipo):
-#     # Se for tipo não autorizado a salvar no Drive
-#     if tipo not in TIPO_PASTA_MAP:
-#         return None
-
-#     tipo_key = TIPO_PASTA_MAP[tipo]
-#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
-
-#     if not parent_folder_id:
-#         st.error(f"Tipo de mídia permitido, mas pasta não configurada no secrets: {tipo_key}")
-#         return None
-
-#     # Autentica no Drive
-#     drive = authenticate_drive()
-
-#     # Gera nome da subpasta com timestamp
-#     base_name, ext = os.path.splitext(filename)
-#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#     folder_name = f"{timestamp}_{base_name}"
-
-#     # Cria nova subpasta no Drive
-#     subfolder = drive.CreateFile({
-#         'title': folder_name,
-#         'mimeType': 'application/vnd.google-apps.folder',
-#         'parents': [{'id': parent_folder_id}]
-#     })
-#     subfolder.Upload()
-#     subfolder_id = subfolder['id']
-
-#     # Salva o arquivo original localmente
-#     with open(filename, "wb") as f:
-#         f.write(file.getbuffer())
-
-#     # Faz upload do arquivo original
-#     gfile = drive.CreateFile({
-#         'title': filename,
-#         'parents': [{'id': subfolder_id}]
-#     })
-#     gfile.SetContentFile(filename)
-#     gfile.Upload()
-
-#     # -------------------------------
-#     # SE FOR IMAGEM, GERAR MINIATURA
-#     # -------------------------------
-#     try:
-#         img = Image.open(filename)
-#         img.thumbnail((280, 280))   # Mantém proporção até caber em 280x280
-
-#         # Nome da miniatura
-#         thumb_name = f"miniatura_{base_name}.png"
-
-#         # Salva miniatura temporária
-#         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
-#         img.save(thumb_path, format="PNG")
-
-#         # Faz upload da miniatura no Drive
-#         thumb_file = drive.CreateFile({
-#             'title': thumb_name,
-#             'parents': [{'id': subfolder_id}]
-#         })
-#         thumb_file.SetContentFile(thumb_path)
-#         thumb_file.Upload()
-
-#         # Remove arquivo temporário da miniatura
-#         os.remove(thumb_path)
-
-#     except Exception as e:
-#         st.warning(f"Não foi possível gerar miniatura: {e}")
-
-#     # Remove arquivo local original
-#     os.remove(filename)
-
-#     # Retorna link público do arquivo original
-#     file_id = gfile['id']
-#     file_link = f"https://drive.google.com/file/d/{file_id}/view"
-
-#     return file_link
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# def upload_to_drive(file, filename, tipo):
-#     # Se for outros tipos que não precisam de armazenamento no Drive
-#     if tipo not in TIPO_PASTA_MAP:
-#         return None
-
-#     tipo_key = TIPO_PASTA_MAP[tipo]
-#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
-
-#     if not parent_folder_id:
-#         st.error(f"Tipo de mídia permitido, mas pasta não configurada no secrets: {tipo_key}")
-#         return None
-
-#     drive = authenticate_drive()
-
-#     # Gera nome da subpasta com timestamp
-#     base_name = os.path.splitext(filename)[0]
-#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#     folder_name = f"{timestamp}_{base_name}"
-
-#     # Cria nova subpasta
-#     subfolder = drive.CreateFile({
-#         'title': folder_name,
-#         'mimeType': 'application/vnd.google-apps.folder',
-#         'parents': [{'id': parent_folder_id}]
-#     })
-#     subfolder.Upload()
-#     subfolder_id = subfolder['id']
-
-#     # Salva o arquivo temporariamente
-#     with open(filename, "wb") as f:
-#         f.write(file.getbuffer())
-
-#     # Cria e faz upload do arquivo dentro da subpasta
-#     gfile = drive.CreateFile({
-#         'title': filename,
-#         'parents': [{'id': subfolder_id}]
-#     })
-#     gfile.SetContentFile(filename)
-#     gfile.Upload()
-
-
-#     # Remove o arquivo local
-#     os.remove(filename)
-
-#     # Retorna o link público do Google Drive
-#     file_id = gfile['id']
-#     file_link = f"https://drive.google.com/file/d/{file_id}/view"
-
-#     return file_link
 
 
 
@@ -512,17 +381,27 @@ with tab_acervo:
 
     # FUNÇÕES PARA CADA TIPO DE ARQUIVO
 
+    # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
+
+    # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
+    temas_ordenados = sorted([t for t in TEMAS_BABACU])
+    temas_ordenados.append("Outro")
+
+    # Adiciona uma opção vazia no início
+    temas_ordenados = [""] + temas_ordenados
+
+
     # 1. Cadastro de publicação ---------------------------------------------------------------------------
     def enviar_publicacao():
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
+        # # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
 
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
+        # # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
+        # temas_ordenados = sorted([t for t in TEMAS_BABACU])
+        # temas_ordenados.append("Outro")
 
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
+        # # Adiciona uma opção vazia no início
+        # temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
@@ -602,7 +481,8 @@ with tab_acervo:
                             "enviado_por": st.session_state["nome"],
                             "link": file_link,
                             "thumb_link": thumb_link,
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
+                            "data_upload": datetime.now()
+
                         }
 
                         # Insere o documento na coleção `publicacoes`
@@ -619,14 +499,14 @@ with tab_acervo:
     # 2. Cadastro de imagem ---------------------------------------------------------------------------
     def enviar_imagem():
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
+        # # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
 
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
+        # # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
+        # temas_ordenados = sorted([t for t in TEMAS_BABACU])
+        # temas_ordenados.append("Outro")
 
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
+        # # Adiciona uma opção vazia no início
+        # temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
@@ -725,7 +605,8 @@ with tab_acervo:
                             "enviado_por": st.session_state["nome"],
                             "link": file_link,
                             "thumb_link": thumb_link,
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
+                            "data_upload": datetime.now()
+
                         }
 
                         # Insere o documento na coleção `publicacoes`
@@ -742,14 +623,14 @@ with tab_acervo:
     # 3. Cadastro de relatório ---------------------------------------------------------------------------
     def enviar_relatorio(): 
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
+        # # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
 
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
+        # # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
+        # temas_ordenados = sorted([t for t in TEMAS_BABACU])
+        # temas_ordenados.append("Outro")
 
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
+        # # Adiciona uma opção vazia no início
+        # temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
@@ -831,7 +712,8 @@ with tab_acervo:
                             "link": file_link,
                             "thumb_link": thumb_link,
                             "enviado_por": st.session_state["nome"],
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
+                            "data_upload": datetime.now()
+
                         }
 
                         # Insere o documento na coleção
@@ -848,14 +730,14 @@ with tab_acervo:
     # 4. Cadastro de vídeo ---------------------------------------------------------------------------
     def enviar_video(): #!!!!
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
+        # # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
 
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
+        # # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
+        # temas_ordenados = sorted([t for t in TEMAS_BABACU])
+        # temas_ordenados.append("Outro")
 
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
+        # # Adiciona uma opção vazia no início
+        # temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
@@ -966,11 +848,12 @@ with tab_acervo:
                             "link": link_video,
                             "thumb_link": thumb_link,
                             "enviado_por": st.session_state["nome"],
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
+                            "data_upload": datetime.now()
+
                         }
 
                         # Insere o documento na coleção
-                        videos.insert_one(data)   #!!!!
+                        videos.insert_one(data)
 
                         # Mostra mensagem de sucesso
                         st.success("Documento enviado com sucesso!")
@@ -981,24 +864,17 @@ with tab_acervo:
 
 
     # 5. Cadastro de podcast ---------------------------------------------------------------------------
-    def enviar_podcast(): #!!!!
+    def enviar_podcast(): 
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
 
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
-
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
-        st.subheader("Cadastrar podcast")    #!!!!
+        st.subheader("Cadastrar podcast")    
 
         # ----- CAMPOS DO FORMULÁRIO -----
 
-        tipo_doc = "Podcast" #!!!!
+        tipo_doc = "Podcast" 
 
         # Campo de texto: título
         titulo = st.text_input("Título")
@@ -1043,151 +919,133 @@ with tab_acervo:
 
 
         # ----- LÓGICA DE SUBMISSÃO -----
+
+
         if submitted:
 
-            # Validação: todos os campos obrigatórios devem estar preenchidos
-            if not titulo or not descricao or not anos or not tema or not autor or not organizacao or not link_podcast: #!!!!
-                st.error("Todos os campos são obrigatórios.")
+            # Verifica campos obrigatórios
+            if not titulo or not link_podcast:
+                st.error("Preencha título e link.")
+                return
 
-            else:
-                try:
-                    with st.spinner('Enviando documento...'):
+            with st.spinner("Enviando ..."):
+                
+                # Gera screenshot da página do podcast
+                thumb_local = gerar_thumbnail_pagina(link_podcast, titulo)
 
-                        # # Monta o nome do arquivo com a extensão original
-                        # extensao = os.path.splitext(arquivo.name)[1]
-                        # titulo_com_extensao = f"{titulo.strip()}{extensao}"
+                # Envia screenshot ao Google Drive
+                thumb_link = None
+                if thumb_local:
+                    thumb_link = upload_thumbnail_to_drive(
+                        local_path=thumb_local,
+                        nome_base=titulo,
+                        tipo=tipo_doc
+                    )
 
-                        # # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        # file_id = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
+                # Salva no MongoDB
+                data = {
+                    "titulo": titulo,
+                    "descricao": descricao,
+                    "tema": tema,
+                    "autor": autor,
+                    "organizacao": organizacao,
+                    "link": link_podcast,
+                    "thumb_link": thumb_link,
+                    "tipo": tipo_doc,
+                    "enviado_por": st.session_state["nome"],
+                    "ano_publicacao": ano_publicacao,
+                    "data_upload": datetime.now()
+                }
+                podcasts.insert_one(data)
+                st.success("Podcast cadastrado com sucesso!")
 
-                        # Prepara o dicionário com os dados para salvar no MongoDB
-                        data = {     #!!!!
-                            "titulo": titulo,
-                            "descricao": descricao,
-                            "ano_publicacao": ano_publicacao,
-                            "tema": tema,
-                            "autor": autor,
-                            "organizacao": organizacao,
-                            "tipo": tipo_doc,
-                            "link": link_podcast,
-                            "enviado_por": st.session_state["nome"],
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
-                        }
 
-                        # Insere o documento na coleção
-                        podcasts.insert_one(data)   #!!!!
 
-                        # Mostra mensagem de sucesso
-                        st.success("Documento enviado com sucesso!")
 
-                except Exception as e:
-                    # Mensagem de erro em caso de falha no processo
-                    st.error(f"Erro no upload: {e}")
 
 
     # 6. Cadastro de site ---------------------------------------------------------------------------
-    def enviar_site(): #!!!!
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
-
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
-
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
+    def enviar_site(): 
 
         # Título da seção
         st.write('')
-        st.subheader("Cadastrar site")    #!!!!
+        st.subheader("Cadastrar site")    
+
+        tipo_doc = "Site" 
 
         # ----- CAMPOS DO FORMULÁRIO -----
-
-        tipo_doc = "Site" #!!!!
-
-        # Campo de texto: título
         titulo = st.text_input("Título")
-
-        # Campo de texto longo: descrição
         descricao = st.text_area("Descrição")
-
-        # # Dropdown: ano (de hoje até 1950)
-        # anos = list(range(datetime.now().year, 1949, -1))
-        # ano_publicacao = st.selectbox("Ano de publicação", anos)
-
-        # Campo multiselect para temas
         tema = st.multiselect("Tema", temas_ordenados)
-
-        # Campo de texto: autor(es)
         autor = st.text_input("Autor(es) / Autora(s)")
 
-        # Pega as organizações cadastradas no MongoDB
         organizacoes_disponiveis = sorted([doc.get("nome_organizacao") for doc in organizacoes.find()])
-
-        # Multiselect com opção de cadastrar nova organização
         organizacao = st.multiselect(
             "Organização responsável",
-            ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis)
+            ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis
+        )
 
-        # Campo de texto: título
-        link_site = st.text_input("Link do site")   #!!!!
+        link_site = st.text_input("Link do site")
 
         # Se o usuário escolheu cadastrar nova organização
         if "+ Cadastrar nova organização" in organizacao:
             cadastrar_organizacao()
 
-
         # ----- BOTÃO DE ENVIO E COLUNAS -----
-
-        # Layout: duas colunas para botão e feedback
         col1, col2 = st.columns([1, 6])
         col1.write('')  # espaçamento
 
         # Botão de envio
         submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
 
-
         # ----- LÓGICA DE SUBMISSÃO -----
         if submitted:
 
-            # Validação: todos os campos obrigatórios devem estar preenchidos
-            if not titulo or not descricao or not tema or not autor or not organizacao or not link_site: #!!!!
+            # Verifica campos obrigatórios
+            if not titulo or not descricao or not tema or not autor or not organizacao or not link_site:
                 st.error("Todos os campos são obrigatórios.")
+                return
 
-            else:
-                try:
-                    with st.spinner('Enviando documento...'):
+            with st.spinner("Enviando ..."):
 
-                        # # Monta o nome do arquivo com a extensão original
-                        # extensao = os.path.splitext(arquivo.name)[1]
-                        # titulo_com_extensao = f"{titulo.strip()}{extensao}"
 
-                        # # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        # file_id = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
+                # Gerar miniatura local
+                thumb_local = gerar_thumbnail_pagina(link_site, titulo)
 
-                        # Prepara o dicionário com os dados para salvar no MongoDB
-                        data = {     #!!!!
-                            "titulo": titulo,
-                            "descricao": descricao,
-                            # "ano_publicacao": ano_publicacao,
-                            "tema": tema,
-                            "autor": autor,
-                            "organizacao": organizacao,
-                            "tipo": tipo_doc,
-                            "link": link_site,
-                            "enviado_por": st.session_state["nome"],
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
-                        }
+                # Envia screenshot ao Google Drive
+                thumb_link = None
+                if thumb_local:
+                    thumb_link = upload_thumbnail_to_drive(
+                        local_path=thumb_local,
+                        nome_base=titulo,
+                        tipo=tipo_doc
+                    )
 
-                        # Insere o documento na coleção
-                        sites.insert_one(data)   #!!!!
 
-                        # Mostra mensagem de sucesso
-                        st.success("Documento enviado com sucesso!")
+                # Salva no MongoDB
+                data = {
+                    "titulo": titulo,
+                    "descricao": descricao,
+                    "tema": tema,
+                    "autor": autor,
+                    "organizacao": organizacao,
+                    "tipo": tipo_doc,
+                    "link": link_site,
+                    "thumb_link": thumb_link,
+                    "enviado_por": st.session_state["nome"],
+                    "data_upload": datetime.now()
+                }
 
-                except Exception as e:
-                    # Mensagem de erro em caso de falha no processo
-                    st.error(f"Erro no upload: {e}")
+                sites.insert_one(data)
+                st.success("Site cadastrado com sucesso!")
+
+
+
+
+
+
+
 
 
     # 7. Cadastro de mapa ---------------------------------------------------------------------------
@@ -1282,7 +1140,8 @@ with tab_acervo:
                             "thumb_link": thumb_link,
                             "link": file_link,
                             "enviado_por": st.session_state["nome"],
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
+                            "data_upload": datetime.now()
+
                         }
 
                         # Insere o documento na coleção
@@ -1297,24 +1156,16 @@ with tab_acervo:
 
 
     # 8. Cadastro de legislacao ---------------------------------------------------------------------------
-    def enviar_legislacao(): #!!!!
+    def enviar_legislacao(): 
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
-
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
-
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
-        st.subheader("Cadastrar legislação")    #!!!!
+        st.subheader("Cadastrar legislação")    
 
         # ----- CAMPOS DO FORMULÁRIO -----
 
-        tipo_doc = "Legislação" #!!!!
+        tipo_doc = "Legislação" 
 
         # Campo de texto: título
         titulo = st.text_input("Título")
@@ -1336,20 +1187,10 @@ with tab_acervo:
         casa_legislativa = st.text_input("Casa legislativa")
 
 
-        # # Pega as organizações cadastradas no MongoDB
-        # organizacoes_disponiveis = sorted([doc.get("nome_organizacao") for doc in organizacoes.find()])
-
-        # # Multiselect com opção de cadastrar nova organização
-        # organizacao = st.multiselect(
-        #     "Organização responsável",
-        #     ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis)
 
         # Campo de texto: título
         link_legislacao = st.text_input("Link da legislação")
 
-        # # Se o usuário escolheu cadastrar nova organização
-        # if "+ Cadastrar nova organização" in organizacao:
-        #     cadastrar_organizacao()
 
 
         # ----- BOTÃO DE ENVIO E COLUNAS -----
@@ -1373,15 +1214,9 @@ with tab_acervo:
                 try:
                     with st.spinner('Enviando documento...'):
 
-                        # # Monta o nome do arquivo com a extensão original
-                        # extensao = os.path.splitext(arquivo.name)[1]
-                        # titulo_com_extensao = f"{titulo.strip()}{extensao}"
-
-                        # # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        # file_id = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
 
                         # Prepara o dicionário com os dados para salvar no MongoDB
-                        data = {     #!!!!
+                        data = {    
                             "titulo": titulo,
                             "descricao": descricao,
                             "ano_publicacao": ano_publicacao,
@@ -1391,11 +1226,12 @@ with tab_acervo:
                             "tipo": tipo_doc,
                             "link": link_legislacao,
                             "enviado_por": st.session_state["nome"],
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
+                            "data_upload": datetime.now()
+
                         }
 
                         # Insere o documento na coleção
-                        legislacao.insert_one(data)   #!!!!
+                        legislacao.insert_one(data) 
 
                         # Mostra mensagem de sucesso
                         st.success("Documento enviado com sucesso!")
@@ -1407,24 +1243,16 @@ with tab_acervo:
 
 
     # 9. Cadastro de ponto de interesse ---------------------------------------------------------------------------
-    def enviar_ponto(): #!!!!
+    def enviar_ponto(): 
 
-        # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
-
-        # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        temas_ordenados.append("Outro")
-
-        # Adiciona uma opção vazia no início
-        temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
-        st.subheader("Cadastrar ponto de interesse")    #!!!!
+        st.subheader("Cadastrar ponto de interesse")    
 
         # ----- CAMPOS DO FORMULÁRIO -----
 
-        tipo_doc = "Ponto de interesse" #!!!!
+        tipo_doc = "Ponto de interesse" 
 
         # Campo de texto: título
         titulo = st.text_input("Título")
@@ -1432,19 +1260,9 @@ with tab_acervo:
         # Campo de texto longo: descrição
         descricao = st.text_area("Descrição")
 
-        # # Dropdown: ano (de hoje até 1950)
-        # anos = list(range(datetime.now().year, 1949, -1))
-        # ano_publicacao = st.selectbox("Ano de publicação", anos)
 
         # Campo multiselect para temas
         tema = st.multiselect("Tema", temas_ordenados)
-
-        # # Campo de texto: autor(es)
-        # autor = st.text_input("Autor(es) / Autora(s)")
-
-        # # Campo de texto: casa legislativa
-        # casa_legislativa = st.text_input("Casa legislativa")
-
 
         # Pega as organizações cadastradas no MongoDB
         organizacoes_disponiveis = sorted([doc.get("nome_organizacao") for doc in organizacoes.find()])
@@ -1476,59 +1294,64 @@ with tab_acervo:
         if submitted:
 
             # Validação: todos os campos obrigatórios devem estar preenchidos
-            if not titulo or not descricao or not tema or not organizacao or not link_google_maps: #!!!!
+            if not titulo or not descricao or not tema or not organizacao or not link_google_maps: 
                 st.error("Todos os campos são obrigatórios.")
 
-            else:
-                try:
-                    with st.spinner('Enviando documento...'):
 
-                        # # Monta o nome do arquivo com a extensão original
-                        # extensao = os.path.splitext(arquivo.name)[1]
-                        # titulo_com_extensao = f"{titulo.strip()}{extensao}"
+            with st.spinner("Enviando ..."):
 
-                        # # Envia o arquivo ao Google Drive e retorna o ID do arquivo
-                        # file_id = upload_to_drive(arquivo, titulo_com_extensao, tipo_doc)
-
-                        def extrair_lat_long_google_maps(link):
-                            try:
-                                # Extrai a parte após o "@"
-                                coordenadas = link.split("@")[1].split(",")
-                                latitude = coordenadas[0]
-                                longitude = coordenadas[1]
-                                return latitude, longitude
-                            except (IndexError, AttributeError):
-                                return None, None
+                def extrair_lat_long_google_maps(link):
+                    try:
+                        # Extrai a parte após o "@"
+                        coordenadas = link.split("@")[1].split(",")
+                        latitude = coordenadas[0]
+                        longitude = coordenadas[1]
+                        return latitude, longitude
+                    except (IndexError, AttributeError):
+                        return None, None
 
 
-                        # Extrai a latitude e longitude do link do google maps
-                        latitude, longitude = extrair_lat_long_google_maps(link_google_maps)
+                # Extrai a latitude e longitude do link do google maps
+                latitude, longitude = extrair_lat_long_google_maps(link_google_maps)
 
 
 
-                        # Prepara o dicionário com os dados para salvar no MongoDB
-                        data = {     #!!!!
-                            "titulo": titulo,
-                            "descricao": descricao,
-                            # "ano_publicacao": ano_publicacao,
-                            "tema": tema,
-                            "latitude": latitude,
-                            "longitude": longitude,
-                            "tipo": tipo_doc,
-                            "link": link_google_maps,
-                            "enviado_por": st.session_state["nome"],
-                            "data_upload": datetime.now(ZoneInfo("America/Sao_Paulo"))
-                        }
+                # Gerar miniatura local
+                thumb_local = gerar_thumbnail_pagina(link_google_maps, titulo)
 
-                        # Insere o documento na coleção
-                        pontos.insert_one(data)   #!!!!
+                # Envia screenshot ao Google Drive
+                thumb_link = None
+                if thumb_local:
+                    thumb_link = upload_thumbnail_to_drive(
+                        local_path=thumb_local,
+                        nome_base=titulo,
+                        tipo=tipo_doc
+                    )
 
-                        # Mostra mensagem de sucesso
-                        st.success("Documento enviado com sucesso!")
 
-                except Exception as e:
-                    # Mensagem de erro em caso de falha no processo
-                    st.error(f"Erro no upload: {e}")
+
+                # Prepara o dicionário com os dados para salvar no MongoDB
+                data = {     
+                    "titulo": titulo,
+                    "descricao": descricao,
+                    "tema": tema,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "tipo": tipo_doc,
+                    "link": link_google_maps,
+                    "thumb_link": thumb_link,
+                    "enviado_por": st.session_state["nome"],
+                    "data_upload": datetime.now()
+                }
+
+                # Insere o documento na coleção
+                pontos.insert_one(data)   
+
+                # Mostra mensagem de sucesso
+                st.success("Ponto de interesse enviado com sucesso!")
+
+
+
 
 
 
@@ -1566,13 +1389,7 @@ with tab_acervo:
             None
         )
 
-
-
-
-
-
-        # midia_selecionada = st.pills(label="Qual tipo de Mídia", options=["Publicação", "Imagem", "Relatório", "Vídeo", "Podcast", "Site", "Mapa", "Legislação", "Ponto de interesse"])
-    
+  
 
         if midia_selecionada == "Publicação":
             enviar_publicacao()
