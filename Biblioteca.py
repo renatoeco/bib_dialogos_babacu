@@ -94,15 +94,6 @@ st.write('')
 
 
 
-
-# # ------------------ Função utilitária para imagem do Google Drive ------------------ #
-# def link_drive_para_embed(link):
-#     match = re.search(r"/d/([a-zA-Z0-9_-]+)", link)
-#     if match:
-#         file_id = match.group(1)
-#         return f"https://drive.google.com/uc?export=view&id={file_id}"
-#     return link
-
 # ------------------ Dicionários de tipo e ícones ------------------ #
 TIPOS_MIDIA = {
     "Publicação": ":material/menu_book: Publicação",
@@ -222,9 +213,6 @@ def buscar_arquivos(query={}):
         docs_organizacoes + docs_projetos + docs_pesquisas
     )
 
-# ??????????????????????????
-    # st.write('docs_relatorios', docs_relatorios)
-    # st.write('docs_organizacoes', docs_organizacoes)
 
     return arquivos_resultado
 

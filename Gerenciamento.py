@@ -8,7 +8,7 @@ from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 from io import BytesIO
 import pandas as pd
-
+from bson import ObjectId
 
 # ------------------ Bibliotecas de terceiros ------------------ #
 import streamlit as st
@@ -60,10 +60,54 @@ projetos = db["projetos"]
 pesquisas = db["pesquisas"]
 
 
+
+
+
+
+
+
+
+
 # --------------------------------------------------------------
 # Funções auxiliares
 # --------------------------------------------------------------
+def buscar_arquivos(query={}):
+    docs_publicacoes = list(publicacoes.find(query))
+    docs_imagens = list(imagens.find(query))
+    docs_videos = list(videos.find(query))
+    docs_podcasts = list(podcasts.find(query))
+    docs_sites = list(sites.find(query))
+    docs_mapas = list(mapas.find(query))
+    docs_legislacao = list(legislacao.find(query))
+    docs_pontos = list(pontos.find(query))
+    docs_relatorios = list(relatorios.find(query))
+    docs_organizacoes = list(organizacoes.find(query))
+    docs_projetos = list(projetos.find(query))
+    docs_pesquisas = list(pesquisas.find(query))
 
+    for doc in docs_publicacoes: doc["_colecao"] = "publicacoes"
+    for doc in docs_imagens: doc["_colecao"] = "imagens"
+    for doc in docs_videos: doc["_colecao"] = "videos"
+    for doc in docs_podcasts: doc["_colecao"] = "podcasts"
+    for doc in docs_sites: doc["_colecao"] = "sites"
+    for doc in docs_mapas: doc["_colecao"] = "mapas"
+    for doc in docs_legislacao: doc["_colecao"] = "legislacao"
+    for doc in docs_pontos: doc["_colecao"] = "pontos_de_interesse"
+    for doc in docs_relatorios: doc["_colecao"] = "relatorios"
+    for doc in docs_organizacoes: doc["_colecao"] = "organizacoes"
+    for doc in docs_projetos: doc["_colecao"] = "projetos"
+    for doc in docs_pesquisas: doc["_colecao"] = "pesquisas"
+
+    arquivos_resultado = (
+        docs_publicacoes + docs_imagens + docs_videos + docs_podcasts +
+        docs_sites + docs_mapas + docs_legislacao + docs_pontos + docs_relatorios + 
+        docs_organizacoes + docs_projetos + docs_pesquisas
+    )
+
+    return arquivos_resultado
+
+# Todos os arquivos
+arquivos = buscar_arquivos()
 
 # Mapeia tipos exibidos para as chaves das pastas no secrets
 TIPO_PASTA_MAP = {
@@ -78,8 +122,6 @@ TIPO_PASTA_MAP = {
     "Projeto": "projetos",
     "Pesquisa": "pesquisas"
 }
-
-
 
 
 
@@ -183,29 +225,6 @@ def cadastrar_organizacao():
                     st.error(f"Erro ao cadastrar organização: {e}")
 
 
-
-# @st.dialog("Cadastrar Organização")
-# def cadastrar_organizacao():
-#     with st.form("Cadastro de Organização"):
-#         nome_organizacao = st.text_input("Nome da Organização")
-#         sigla = st.text_input("Sigla da Organização")
-
-#         cadastrar = st.form_submit_button(":material/add: Cadastrar")
-
-#         if cadastrar:
-#             # Verificação dos campos obrigatórios
-#             if not nome_organizacao.strip() or not sigla.strip():
-#                 st.error("Todos os campos são obrigatórios.")
-#             else:
-#                 organizacoes.insert_one({
-#                     "nome_organizacao": nome_organizacao.strip(),
-#                     "email_organizacao": sigla.strip()
-#                 })
-#                 st.success("Organização cadastrada com sucesso!")
-#                 time.sleep(2)
-#                 st.rerun()
-
-
 # Função para autenticar Google Drive usando st.secrets
 def authenticate_drive():
     service_account_info = dict(st.secrets["drive_api"])
@@ -232,13 +251,7 @@ def authenticate_drive():
         drive = GoogleDrive(gauth)
         return drive
 
-
-
-
-
 # Função para raspar o screenshot de um site
-
-
 def gerar_thumbnail_pagina(url, nome_base):
     """
     Acessa a URL e salva um screenshot da tela de forma confiável.
@@ -288,14 +301,7 @@ def gerar_thumbnail_pagina(url, nome_base):
 
 
 
-
-
-
-
-
-
 # Envia só a thumbnail / miniatura para o drive
-
 def upload_thumbnail_to_drive(local_path, nome_base, tipo):
     """
     Envia uma imagem (miniatura) ao Google Drive SEM alterar upload_to_drive original.
@@ -340,10 +346,6 @@ def upload_thumbnail_to_drive(local_path, nome_base, tipo):
     except Exception as e:
         st.error(f"Erro ao enviar miniatura: {e}")
         return None
-
-
-
-
 
 
 # Envia o arquivo e a miniatura para o drive
@@ -431,10 +433,6 @@ def upload_to_drive(file, filename, tipo):
 
 
 
-
-
-
-
 # --------------------------------------------------------------
 # Transformação dos dados
 # --------------------------------------------------------------
@@ -449,7 +447,7 @@ TIPOS_MIDIA = [
     "Podcast",
     "Site",
     "Mapa",
-    "Legislacao",
+    "Legislação",
     "Ponto de interesse",
     "Organização",
     "Projeto",
@@ -513,8 +511,6 @@ with tab_acervo:
 
 
     # 0. Cadastro de organização ---------------------------------------------------------------------------
-
-
     def enviar_organizacao(): 
         st.write('')
         st.subheader("Cadastrar organização")    
@@ -627,11 +623,6 @@ with tab_acervo:
                     st.error(f"Erro no upload: {e}")
 
 
-
-
-
-
-
     # 1. Cadastro de publicação ---------------------------------------------------------------------------
     def enviar_publicacao():
 
@@ -669,7 +660,7 @@ with tab_acervo:
         autor = st.text_input("Autor(es) / Autora(s)")
 
         # Pega as organizações cadastradas no MongoDB
-        organizacoes_disponiveis = sorted([doc.get("nome_organizacao") for doc in organizacoes.find()])
+        organizacoes_disponiveis = sorted([doc.get("titulo") for doc in organizacoes.find()])
 
         # Multiselect com opção de cadastrar nova organização
         organizacao = st.multiselect(
@@ -739,15 +730,6 @@ with tab_acervo:
 
     # 2. Cadastro de imagem ---------------------------------------------------------------------------
     def enviar_imagem():
-
-        # # ----- PREPARAÇÃO DO DROPDOWN DE TEMAS -----
-
-        # # Ordena alfabeticamente os temas do babacu (exceto "Outro", que fica no final)
-        # temas_ordenados = sorted([t for t in TEMAS_BABACU])
-        # temas_ordenados.append("Outro")
-
-        # # Adiciona uma opção vazia no início
-        # temas_ordenados = [""] + temas_ordenados
 
         # Título da seção
         st.write('')
@@ -1665,23 +1647,6 @@ with tab_acervo:
                     subfolder.Upload()
                     subfolder_id = subfolder["id"]
 
-                    # # --- Upload do logotipo ---
-                    # logotipo_link = None
-                    # if logotipo:
-                    #     logotipo_name = logotipo.name
-                    #     logotipo_path = os.path.join(tempfile.gettempdir(), logotipo_name)
-                    #     with open(logotipo_path, "wb") as f:
-                    #         f.write(logotipo.getbuffer())
-                        
-                    #     gfile_logo = drive.CreateFile({
-                    #         "title": logotipo_name,
-                    #         "parents": [{"id": subfolder_id}]
-                    #     })
-                    #     gfile_logo.SetContentFile(logotipo_path)
-                    #     gfile_logo.Upload()
-                    #     logotipo_link = f"https://drive.google.com/file/d/{gfile_logo['id']}/view"
-                    #     os.remove(logotipo_path)
-
                     # --- Upload dos documentos ---
                     documentos_links = []
                     for doc in documentos or []:
@@ -1840,8 +1805,6 @@ with tab_acervo:
 
 
 
-
-
     if acao == "Cadastrar documento":
         # Escolha do tipo de mídia
 
@@ -1904,15 +1867,333 @@ with tab_acervo:
         elif midia_selecionada == "Pesquisa":
             enviar_pesquisa()
 
+
+
     elif acao == "Editar um documento":
+        
         st.write('')
-        st.write('')
-        st.write("Em construção")
+
+        # Selectbox para tipo de documento
+        tipo_escolhido = st.selectbox(
+            "Tipo de documento",
+            sorted(TIPOS_MIDIA),
+            width=300
+        )
+
+        # Filtrar apenas os documentos com o tipo selecionado
+        arquivos_filtrados = [doc for doc in arquivos if doc.get("tipo") == tipo_escolhido]
+
+        # Extrair apenas os títulos dos documentos filtrados
+        lista_titulos = [doc.get("titulo", "") for doc in arquivos_filtrados]
+
+        # Selectbox com os títulos filtrados
+        titulo_escolhido = st.selectbox("Escolha o documento para editar", lista_titulos)
+
+        # Encontra o documento com o título escolhido
+        documento_escolhido = next((doc for doc in arquivos if doc.get("tipo") == tipo_escolhido and doc.get("titulo") == titulo_escolhido), None)
+
+
+        # EDITAR ORGANIZAÇÃO
+
+        if tipo_escolhido == "Organização":
+            
+            with st.form("Editar Organização"):
+
+                # Preenche automaticamente se existir no documento, senão deixa vazio
+                nome_organizacao = st.text_input(
+                    "Nome da organização",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                sigla = st.text_input(
+                    "Sigla da organização",
+                    value=documento_escolhido.get("sigla", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                # Tema (multiselect)
+                temas_documento = documento_escolhido.get("tema", [])
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento  # respeita os já salvos
+                )
+
+                CNPJ = st.text_input(
+                    "CNPJ",
+                    value=documento_escolhido.get("cnpj", "")
+                )
+
+                websites = st.text_input(
+                    "Websites (separados por vírgula)",
+                    value=", ".join(documento_escolhido.get("websites", [])) 
+                    if isinstance(documento_escolhido.get("websites"), list) 
+                    else documento_escolhido.get("websites", "")
+                )
+
+
+                # Botão de Salvar
+                submitted = st.form_submit_button("Salvar", icon=":material/save:")
+
+                if submitted:
+   
+                    # Converter websites de string para lista
+                    if isinstance(websites, str):
+                        websites_lista = [w.strip() for w in websites.split(",") if w.strip()]
+                    else:
+                        websites_lista = websites
+
+                    # Criar dicionário de dados para atualizar
+                    data_atualizada = {
+                        "titulo": nome_organizacao,
+                        "descricao": descricao,
+                        "tema": tema,
+                        "cnpj": CNPJ,
+                        "sigla": sigla,
+                        # "documentos": documentos_links,
+                        "tipo": documento_escolhido.get("tipo", "Organização"),
+                        "websites": websites_lista,
+                        "subfolder_id": documento_escolhido.get("subfolder_id"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    # Atualiza o documento no MongoDB usando _id
+                    resultado = organizacoes.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},  # filtro pelo ID original
+                        {"$set": data_atualizada},
+                        upsert=False  # não cria novo documento, apenas atualiza
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Documento atualizado com sucesso!")
+                        time.sleep(3)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada ou o documento não foi atualizado.")                
+
+
+        elif tipo_escolhido == "Publicação":
+
+            with st.form("Editar Publicação"):
+
+                # Preencher automaticamente com os valores existentes
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                # Dropdown: ano de publicação
+                anos = list(range(datetime.now().year, 1949, -1))
+                ano_publicacao_atual = documento_escolhido.get("ano_publicacao", datetime.now().year)
+                if ano_publicacao_atual not in anos:
+                    ano_publicacao_atual = anos[0]  # fallback
+                ano_publicacao = st.selectbox("Ano de publicação", anos, index=anos.index(ano_publicacao_atual))
+
+                # Multiselect: tema
+                temas_documento = documento_escolhido.get("tema", [])
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                # Autor(es)
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                # Organizações
+                organizacoes_disponiveis = sorted([doc.get("titulo") for doc in organizacoes.find()])
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                # Botão de Salvar
+                submitted = st.form_submit_button("Salvar", icon=":material/save:")
+
+                if submitted:
+
+                    # Validar campos obrigatórios
+                    if not titulo or not descricao or not ano_publicacao or not tema or not autor or not organizacao:
+                        st.error("Todos os campos obrigatórios devem ser preenchidos.")
+                    else:
+                        # Se tiver "+ Cadastrar nova organização", chamar função de cadastro
+                        if "+ Cadastrar nova organização" in organizacao:
+                            cadastrar_organizacao()
+
+                        # Preparar dicionário para update
+                        data_atualizada = {
+                            "titulo": titulo,
+                            "descricao": descricao,
+                            "ano_publicacao": ano_publicacao,
+                            "tema": tema,
+                            "autor": autor,
+                            "organizacao": organizacao,
+                            "tipo": documento_escolhido.get("tipo", "Publicação"),
+                            "enviado_por": st.session_state.get("nome"),
+                            "data_upload": datetime.now()
+                        }
+
+                        # Atualiza o documento no MongoDB usando _id
+                        resultado = publicacoes.update_one(
+                            {"_id": ObjectId(documento_escolhido["_id"])},
+                            {"$set": data_atualizada},
+                            upsert=False
+                        )
+
+                        if resultado.modified_count > 0:
+                            st.success("Publicação atualizada com sucesso!")
+                            time.sleep(3)
+                            st.rerun()
+                        else:
+                            st.warning("Nenhuma alteração foi detectada ou o documento não foi atualizado.")
+
+
+        # elif tipo_escolhido == "Imagem":
+        #     editar_imagem(titulo_escolhido)
+        # elif tipo_escolhido == "Relatório":
+        #     editar_relatorio(titulo_escolhido)
+        # elif tipo_escolhido == "Vídeo":
+        #     editar_video(titulo_escolhido)
+        # elif tipo_escolhido == "Podcast":
+        #     editar_podcast(titulo_escolhido)
+        # elif tipo_escolhido == "Site":
+        #     editar_site(titulo_escolhido)
+        # elif tipo_escolhido == "Mapa":
+        #     editar_mapa(titulo_escolhido)
+        # elif tipo_escolhido == "Legislação":
+        #     editar_legislacao(titulo_escolhido)
+        # elif tipo_escolhido == "Ponto de interesse":
+        #     editar_ponto(titulo_escolhido)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     elif acao == "Excluir um documento":
         st.write('')
-        st.write('')
-        st.write("Em construção")
+
+        # Selectbox para tipo de documento com valor vazio por padrão
+        tipo_escolhido = st.selectbox(
+            "Tipo de documento",
+            [""] + sorted(TIPOS_MIDIA),  # adiciona opção vazia
+            index=0,  # seleciona a primeira opção (vazio) por padrão
+            width=300
+        )
+
+        if tipo_escolhido:
+            # Filtrar apenas os documentos com o tipo selecionado
+            arquivos_filtrados = [doc for doc in arquivos if doc.get("tipo") == tipo_escolhido]
+
+            if arquivos_filtrados:
+                # Extrair títulos dos documentos filtrados
+                lista_titulos = [doc.get("titulo", "") for doc in arquivos_filtrados]
+
+                # Selectbox com os títulos filtrados
+                titulo_escolhido = st.selectbox("Escolha o documento para excluir", lista_titulos)
+
+                # Encontra o documento com o título escolhido
+                documento_escolhido = next(
+                    (doc for doc in arquivos_filtrados if doc.get("titulo") == titulo_escolhido),
+                    None
+                )
+
+                if documento_escolhido:
+                    st.warning(f"Você está prestes a excluir: **{titulo_escolhido}**. Essa operação é irreversível. Você tem certeza?")
+                    
+
+                    if st.button("Confirmar exclusão", type="primary", icon=":material/delete:"):
+                        # Determinar a coleção correta
+                        if tipo_escolhido == "Organização":
+                            colecao = organizacoes
+                        elif tipo_escolhido == "Publicação":
+                            colecao = publicacoes
+                        else:
+                            colecao = None
+
+                        # Determinar a coleção correta a partir do mapa
+                        nome_colecao = TIPO_PASTA_MAP.get(tipo_escolhido)
+
+                        if nome_colecao:
+                            colecao = globals().get(nome_colecao)  # pega a variável da coleção pelo nome
+                            if colecao is not None:
+                                resultado = colecao.delete_one({"_id": ObjectId(documento_escolhido["_id"])})
+                                if resultado.deleted_count > 0:
+                                    st.success(f"Documento '{titulo_escolhido}' excluído com sucesso!")
+                                    time.sleep(2)
+                                    st.rerun()
+                                else:
+                                    st.error("Não foi possível excluir o documento.")
+                            else:
+                                st.error(f"Coleção '{nome_colecao}' não encontrada no código.")
+                        else:
+                            st.error("Tipo de documento não mapeado para uma coleção.")
+
+
+
+                        # if colecao:
+                        #     resultado = colecao.delete_one({"_id": ObjectId(documento_escolhido["_id"])})
+                        #     if resultado.deleted_count > 0:
+                        #         st.success(f"Documento '{titulo_escolhido}' excluído com sucesso!")
+                        #         time.sleep(2)
+                        #         st.rerun()
+                        #     else:
+                        #         st.error("Não foi possível excluir o documento.")
+                        # else:
+                        #     st.error("Coleção não definida para este tipo de documento.")
+            else:
+                st.info("Não há documentos cadastrados para este tipo.")
+        # else:
+        #     st.info("Selecione um tipo de documento para prosseguir.")
 
 
 
@@ -1938,7 +2219,7 @@ def convidar_pessoa():
 
         status = "ativo"
 
-        if st.form_submit_button("Enviar convite", type="primary"):
+        if st.form_submit_button("Enviar convite", type="primary", icon=":material/mail:"):
 
             pessoas.insert_one({"e_mail": email_invite,
                                 "permissao": permissao,
@@ -1948,8 +2229,8 @@ def convidar_pessoa():
             enviar_convite(email_invite)
 
             st.success("Convite enviado com sucesso!")
-
-
+            time.sleep(3)
+            st.rerun()
 
 
 # Função para enviar um e_mail com convite
@@ -2000,18 +2281,18 @@ def enviar_convite(destinatario):
 def editar_pessoa():
 
     # Lista de nomes disponíveis
-    lista_nomes = sorted(df_pessoas["nome_completo"].dropna().tolist())
+    lista_nomes = sorted(df_pessoas["Nome"].dropna().tolist())
     nome = st.selectbox("Escolha a pessoa", lista_nomes)
 
     # Tenta achar a pessoa no DataFrame
-    pessoa_sel = df_pessoas[df_pessoas["nome_completo"] == nome]
+    pessoa_sel = df_pessoas[df_pessoas["Nome"] == nome]
 
     if not pessoa_sel.empty:
         pessoa_sel = pessoa_sel.iloc[0]  # acessa linha encontrada
 
         # Usa valores do DataFrame se existirem, senão coloca padrão
-        nome_atual = pessoa_sel.get("nome_completo")
-        email_atual = pessoa_sel.get("e_mail") or ""
+        nome_atual = pessoa_sel.get("Nome")
+        email_atual = pessoa_sel.get("E-mail") or ""
         status_atual = pessoa_sel.get("status") or "ativo"
         permissao_atual = pessoa_sel.get("permissao") or "Visitante"
     else:
@@ -2037,7 +2318,7 @@ def editar_pessoa():
             index=["Visitante", "Editor", "Administrador"].index(permissao_atual) if permissao_atual in ["Visitante", "Editor", "Administrador"] else 0
         )
 
-        if st.form_submit_button("Salvar", type="primary"):
+        if st.form_submit_button("Salvar", type="primary", icon="material/save"):
             pessoas.update_one(
                 {"e_mail": email_atual},  # filtro com e-mail original
                 {"$set": {
@@ -2055,27 +2336,6 @@ def editar_pessoa():
 
 
 
-
-
-
-
-
-
-
-# def editar_pessoa():
-
-#     lista_nomes = sorted(df_pessoas["nome_completo"].dropna().tolist())
-#     nome = st.selectbox("Nome", lista_nomes)
-
-
-#     with st.form("Editar pessoa"):
-#         email = st.text_input("E-mail")
-#         status = st.selectbox("Status", ["ativo", "inativo"])
-#         permissao = st.selectbox("Permissão", ["Visitante", "Editor", "Administrador"])
-
-#         if st.form_submit_button("Salvar", type="primary"):
-#             pessoas.update_one({"e_mail": st.session_state.email}, {"$set": {"nome": st.session_state.nome, "status": status, "permissao": permissao}}, upsert=True)
-
         st.write('')
 
     st.write("**Visitante** consegue consultar a biblioteca e o mapa")
@@ -2083,19 +2343,31 @@ def editar_pessoa():
     st.write("**Administrador** consegue convidar novas pessoas")
 
 
-
-
-
-
-
-
 with tab_pessoas:
     st.write('')
 
+    # TRATAMENTO DOS DADOS ###############
+    
     # Criar dataframe da coleção pessoas
     df_pessoas = pd.DataFrame(list(pessoas.find()))
 
-    # Botões #############
+    # Renomar as colunas do dataframe
+    df_pessoas = df_pessoas.rename(columns={
+        "nome_completo": "Nome",
+        "e_mail": "E-mail",
+        "status": "Status",
+        "permissao": "Permissão"
+    })
+
+    # Drop das colunas senha e _id
+    # df_pessoas = df_pessoas.drop(columns=["senha", "_id"])
+ 
+    
+
+
+
+
+    # BOTÕES #############
     with st.container(horizontal=True, horizontal_alignment="left"):
         st.button("Convidar", on_click=convidar_pessoa, icon=":material/person_add:", width=250)
         st.button("Editar", on_click=editar_pessoa, icon=":material/person_edit:", width=250)
@@ -2103,15 +2375,17 @@ with tab_pessoas:
     st.write('')
 
 
+    # Filtra usuários ativos ------------------------------
     st.write("**Pessoas com acesso ao site**")
 
-    # Filtra usuários ativos ------------------------------
     df_pessoas_ativas = df_pessoas[
-        df_pessoas["senha"].notna()
+        (df_pessoas["senha"].notna()) & 
+        (df_pessoas["Status"] == "ativo")
     ]
 
     # Mostrar dataframe
-    st.dataframe(df_pessoas_ativas)
+    st.dataframe(df_pessoas_ativas.drop(columns=["senha", "_id"]), hide_index=True)
+
 
 
 
@@ -2122,17 +2396,17 @@ with tab_pessoas:
         st.write("**Convites pendentes**")
 
         # Mostrar dataframe
-        st.dataframe(df_pessoas_pendentes)
+        st.dataframe(df_pessoas_pendentes.drop(columns=["senha", "_id", "Nome", "Status"]), hide_index=True)
 
 
 
     # Filtra usuários com convite pendente ------------------------------
-    df_pessoas_inativas = df_pessoas[df_pessoas["status"] == "inativo"]
+    df_pessoas_inativas = df_pessoas[df_pessoas["Status"] == "inativo"]
 
     if len(df_pessoas_inativas) > 0:
 
         st.write("**Inativos(as)**")
 
         # Mostrar dataframe
-        st.dataframe(df_pessoas_inativas)
+        st.dataframe(df_pessoas_inativas.drop(columns=["senha", "_id"]), hide_index=True)
 
