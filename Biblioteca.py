@@ -29,6 +29,7 @@ relatorios = db["relatorios"]
 pessoas = db["pessoas"]
 organizacoes = db["organizacoes"]
 projetos = db["projetos"]
+pesquisas = db["pesquisas"]
 
 # -------------------------------
 
@@ -114,7 +115,8 @@ TIPOS_MIDIA = {
     "Legislação": ":material/balance: Legislação",
     "Ponto de interesse": ":material/location_on: Ponto de interesse",
     "Organização": ":material/things_to_do: Organização",
-    "Projeto": ":material/assignment: Projeto"
+    "Projeto": ":material/assignment: Projeto",
+    "Pesquisa": ":material/query_stats: Pesquisa"
 }
 
 TIPOS_MIDIA_ICONE = {
@@ -128,7 +130,8 @@ TIPOS_MIDIA_ICONE = {
     "Legislação": "balance",
     "Ponto de interesse": "location_on",
     "Organização": "things_to_do",
-    "Projeto": "assignment"
+    "Projeto": "assignment",
+    "Pesquisa": "query_stats"
 }
 
 
@@ -162,10 +165,12 @@ with st.expander("Filtros"):
         temas_relatorios = relatorios.distinct("tema")
         temas_organizacoes = organizacoes.distinct("tema")
         temas_projetos = projetos.distinct("tema")
+        temas_pesquisas = pesquisas.distinct("tema")
 
         todos_os_temas = set(
             temas_publicacoes + temas_imagens + temas_videos + temas_podcasts +
-            temas_sites + temas_mapas + temas_legislacao + temas_pontos + temas_relatorios + temas_organizacoes + temas_projetos
+            temas_sites + temas_mapas + temas_legislacao + temas_pontos + temas_relatorios + 
+            temas_organizacoes + temas_projetos + temas_pesquisas
         )
         temas_disponiveis = sorted(todos_os_temas)
 
@@ -196,6 +201,7 @@ def buscar_arquivos(query={}):
     docs_relatorios = list(relatorios.find(query))
     docs_organizacoes = list(organizacoes.find(query))
     docs_projetos = list(projetos.find(query))
+    docs_pesquisas = list(pesquisas.find(query))
 
     for doc in docs_publicacoes: doc["_colecao"] = "publicacoes"
     for doc in docs_imagens: doc["_colecao"] = "imagens"
@@ -208,10 +214,12 @@ def buscar_arquivos(query={}):
     for doc in docs_relatorios: doc["_colecao"] = "relatorios"
     for doc in docs_organizacoes: doc["_colecao"] = "organizacoes"
     for doc in docs_projetos: doc["_colecao"] = "projetos"
+    for doc in docs_pesquisas: doc["_colecao"] = "pesquisas"
 
     arquivos_resultado = (
         docs_publicacoes + docs_imagens + docs_videos + docs_podcasts +
-        docs_sites + docs_mapas + docs_legislacao + docs_pontos + docs_relatorios + docs_organizacoes + docs_projetos
+        docs_sites + docs_mapas + docs_legislacao + docs_pontos + docs_relatorios + 
+        docs_organizacoes + docs_projetos + docs_pesquisas
     )
 
 # ??????????????????????????
@@ -319,6 +327,19 @@ if arquivos:
                         """, unsafe_allow_html=True)
 
 
+                # Renderiza icone assignment
+                if tipo == "Pesquisa":
+                    st.markdown("""
+                        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+                        <div style="text-align:center; margin: 40px 0;">
+                            <span class="material-icons" style="font-size: 100px; color: #777;">
+                                query_stats
+                            </span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+
+
                 if tipo == "Organização":
 
                     # Renderiza logotipo
@@ -403,6 +424,14 @@ if arquivos:
                     subfolder_id = arq.get("subfolder_id", "")
                     link = f"https://drive.google.com/drive/folders/{subfolder_id}"
                     st.link_button("Ver detalhes", url=link, type="primary")
+
+                if tipo == "Pesquisa":
+
+                    # Link para a pasta com vários arquivos
+                    subfolder_id = arq.get("subfolder_id", "")
+                    link = f"https://drive.google.com/drive/folders/{subfolder_id}"
+                    st.link_button("Ver detalhes", url=link, type="primary")
+
 
                 else:
                     st.link_button("Ver detalhes", url=link, type="primary")

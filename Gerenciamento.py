@@ -52,6 +52,7 @@ relatorios = db["relatorios"]
 pessoas = db["pessoas"]
 organizacoes = db["organizacoes"]
 projetos = db["projetos"]
+pesquisas = db["pesquisas"]
 
 
 # --------------------------------------------------------------
@@ -69,7 +70,8 @@ TIPO_PASTA_MAP = {
     "Site": "sites",
     "Ponto de interesse": "pontos_interesse",
     "Organização": "organizacoes",
-    "Projeto": "projetos"
+    "Projeto": "projetos",
+    "Pesquisa": "pesquisas"
 }
 
 
@@ -445,7 +447,8 @@ TIPOS_MIDIA = [
     "Legislacao",
     "Ponto de interesse",
     "Organização",
-    "Projeto"
+    "Projeto",
+    "Pesquisa"
 ]
 # Temas
 TEMAS_BABACU = [
@@ -1699,6 +1702,7 @@ with tab_acervo:
                         "objetivo": objetivo,
                         "documentos": documentos_links,
                         "tipo": tipo_doc,
+                        "organizacao": organizacao,
                         "fonte_recursos": fonte_recursos,
                         "data_inicio": data_inicio,
                         "data_fim": data_fim,
@@ -1715,6 +1719,119 @@ with tab_acervo:
                     st.error(f"Erro no upload: {e}")
 
         
+    # 10. Cadastro de projeto ---------------------------------------------------------------------------
+    def enviar_pesquisa(): 
+        st.write('')
+        st.subheader("Cadastrar pesquisa")    
+
+        tipo_doc = "Pesquisa" 
+
+        # Campos do formulário
+        
+        nome_pesquisa = st.text_input("Nome da pesquisa")
+        
+
+        # Pega as organizações cadastradas no MongoDB
+        organizacoes_disponiveis = sorted([doc.get("titulo") for doc in organizacoes.find()])
+
+        # Multiselect com opção de cadastrar nova organização
+        organizacao = st.multiselect(
+            "Organização responsável",
+            ["+ Cadastrar nova organização"] + organizacoes_disponiveis)
+        
+        # Se o usuário escolheu cadastrar nova organização
+        if "+ Cadastrar nova organização" in organizacao:
+            cadastrar_organizacao()
+
+        ano_publicacao = st.text_input("Ano de publicação")
+        
+        autor = st.text_input("Autor(es/as)")
+
+        descricao = st.text_area("Resumo executivo da pesquisa")
+        
+        tema = st.multiselect("Tema", temas_ordenados)
+        
+        
+        documentos = st.file_uploader(
+            "Documentos da pesquisa", 
+            accept_multiple_files=True, 
+            type=["pdf", "png", "jpg"]
+        )
+
+        # Botão de envio
+        col1, col2 = st.columns([1, 6])
+        col1.write('')
+        submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
+
+        if submitted:
+            if not nome_pesquisa:
+                st.error("Insira o nome da pesquisa.")
+                return
+
+            with st.spinner('Enviando ...'):
+                try:
+                    drive = authenticate_drive()
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                    # pegar a correspondência de tipo_doc em TIPO_PASTA_MAP
+                    tipo_key = TIPO_PASTA_MAP.get(tipo_doc)
+                    
+
+
+                    parent_folder_id = st.secrets["pastas"].get(tipo_key)
+                    if not parent_folder_id:
+                        st.error(f"Pasta para tipo '{tipo_doc}' não configurada no secrets.")
+                        return
+
+                    # Criar subpasta do projeto
+                    subfolder_name = f"{timestamp}_{nome_pesquisa.replace(' ', '_')}"
+                    subfolder = drive.CreateFile({
+                        "title": subfolder_name,
+                        "mimeType": "application/vnd.google-apps.folder",
+                        "parents": [{"id": parent_folder_id}]
+                    })
+                    subfolder.Upload()
+                    subfolder_id = subfolder["id"]
+
+
+                    # --- Upload dos documentos ---
+                    documentos_links = []
+                    for doc in documentos or []:
+                        doc_name = doc.name
+                        doc_path = os.path.join(tempfile.gettempdir(), doc_name)
+                        with open(doc_path, "wb") as f:
+                            f.write(doc.getbuffer())
+                        
+                        gfile_doc = drive.CreateFile({
+                            "title": doc_name,
+                            "parents": [{"id": subfolder_id}]
+                        })
+                        gfile_doc.SetContentFile(doc_path)
+                        gfile_doc.Upload()
+                        documentos_links.append(f"https://drive.google.com/file/d/{gfile_doc['id']}/view")
+                        os.remove(doc_path)
+
+                    # --- Salvar no MongoDB ---
+                    data = {    
+                        "titulo": nome_pesquisa,
+                        "ano_publicacao": ano_publicacao,
+                        "autor": autor,
+                        "descricao": descricao,
+                        "tema": tema,
+                        "documentos": documentos_links,
+                        "tipo": tipo_doc,
+                        "organizacao": organizacao,
+                        "subfolder_id": subfolder_id,
+                        "enviado_por": st.session_state["nome"],
+                        "data_upload": datetime.now()
+                    }
+
+                    pesquisas.insert_one(data)
+                    st.success("Pesquisa cadastrada com sucesso!")
+
+                except Exception as e:
+                    st.error(f"Erro no upload: {e}")
+
 
 
 
@@ -1736,7 +1853,8 @@ with tab_acervo:
             "Mapa": ":material/map: Mapa",
             "Legislação": ":material/balance: Legislação",
             "Ponto de interesse": ":material/location_on: Ponto de interesse",
-            "Projeto": ":material/assignment: Projeto"
+            "Projeto": ":material/assignment: Projeto",
+            "Pesquisa": ":material/query_stats: Pesquisa",
         }
 
         # 2. Lista de rótulos com ícones
@@ -1778,7 +1896,8 @@ with tab_acervo:
             enviar_ponto()
         elif midia_selecionada == "Projeto":
             enviar_projeto()
-
+        elif midia_selecionada == "Pesquisa":
+            enviar_pesquisa()
 
     elif acao == "Editar um documento":
         st.write('')
