@@ -1936,11 +1936,13 @@ def convidar_pessoa():
             ["Visitante", "Editor", "Administrador"]
         )
 
+        status = "ativo"
+
         if st.form_submit_button("Enviar convite", type="primary"):
 
             pessoas.insert_one({"e_mail": email_invite,
                                 "permissao": permissao,
-                                "status": "ativo"})
+                                "status": status})
             
             # Enviar o email
             enviar_convite(email_invite)
@@ -1993,22 +1995,144 @@ def enviar_convite(destinatario):
         return False
 
 
+# Função para editar pessoa
+@st.dialog("Editar pessoa")
+def editar_pessoa():
+
+    # Lista de nomes disponíveis
+    lista_nomes = sorted(df_pessoas["nome_completo"].dropna().tolist())
+    nome = st.selectbox("Escolha a pessoa", lista_nomes)
+
+    # Tenta achar a pessoa no DataFrame
+    pessoa_sel = df_pessoas[df_pessoas["nome_completo"] == nome]
+
+    if not pessoa_sel.empty:
+        pessoa_sel = pessoa_sel.iloc[0]  # acessa linha encontrada
+
+        # Usa valores do DataFrame se existirem, senão coloca padrão
+        nome_atual = pessoa_sel.get("nome_completo")
+        email_atual = pessoa_sel.get("e_mail") or ""
+        status_atual = pessoa_sel.get("status") or "ativo"
+        permissao_atual = pessoa_sel.get("permissao") or "Visitante"
+    else:
+        # Se não achar no DataFrame
+        email_atual = ""
+        status_atual = "ativo"
+        permissao_atual = "Visitante"
+
+    # Formulário com preenchimento automático (ou vazio se não existir)
+    with st.form("Editar pessoa"):
+        nome = st.text_input("Nome", value=nome_atual)
+        email = st.text_input("E-mail", value=email_atual)
+
+        status = st.selectbox(
+            "Status",
+            ["ativo", "inativo"],
+            index=["ativo", "inativo"].index(status_atual) if status_atual in ["ativo", "inativo"] else 0
+        )
+
+        permissao = st.selectbox(
+            "Permissão",
+            ["Visitante", "Editor", "Administrador"],
+            index=["Visitante", "Editor", "Administrador"].index(permissao_atual) if permissao_atual in ["Visitante", "Editor", "Administrador"] else 0
+        )
+
+        if st.form_submit_button("Salvar", type="primary"):
+            pessoas.update_one(
+                {"e_mail": email_atual},  # filtro com e-mail original
+                {"$set": {
+                    "nome_completo": nome,
+                    "e_mail": email,
+                    "status": status,
+                    "permissao": permissao
+                }},
+                upsert=True
+            )
+            st.success("Dados atualizados com sucesso!")
+            time.sleep(3)
+            st.rerun()
+
+
+
+
+
+
+
+
+
+
+
+# def editar_pessoa():
+
+#     lista_nomes = sorted(df_pessoas["nome_completo"].dropna().tolist())
+#     nome = st.selectbox("Nome", lista_nomes)
+
+
+#     with st.form("Editar pessoa"):
+#         email = st.text_input("E-mail")
+#         status = st.selectbox("Status", ["ativo", "inativo"])
+#         permissao = st.selectbox("Permissão", ["Visitante", "Editor", "Administrador"])
+
+#         if st.form_submit_button("Salvar", type="primary"):
+#             pessoas.update_one({"e_mail": st.session_state.email}, {"$set": {"nome": st.session_state.nome, "status": status, "permissao": permissao}}, upsert=True)
+
+        st.write('')
+
+    st.write("**Visitante** consegue consultar a biblioteca e o mapa")
+    st.write("**Editor** consegue adicionar, editar e excluir documentos")
+    st.write("**Administrador** consegue convidar novas pessoas")
+
+
+
+
+
+
 
 
 with tab_pessoas:
     st.write('')
 
-    with st.container(horizontal=True, horizontal_alignment="left"):
-
-        st.button("Convidar", on_click=convidar_pessoa, icon=":material/person_add:", width=250)
-
-    st.write('')
-
-    st.write("**Pessoas com acesso ao site**")
-    
     # Criar dataframe da coleção pessoas
     df_pessoas = pd.DataFrame(list(pessoas.find()))
 
+    # Botões #############
+    with st.container(horizontal=True, horizontal_alignment="left"):
+        st.button("Convidar", on_click=convidar_pessoa, icon=":material/person_add:", width=250)
+        st.button("Editar", on_click=editar_pessoa, icon=":material/person_edit:", width=250)
+
+    st.write('')
+
+
+    st.write("**Pessoas com acesso ao site**")
+
+    # Filtra usuários ativos ------------------------------
+    df_pessoas_ativas = df_pessoas[
+        df_pessoas["senha"].notna()
+    ]
+
     # Mostrar dataframe
-    st.dataframe(df_pessoas)
+    st.dataframe(df_pessoas_ativas)
+
+
+
+    # Filtra usuários com convite pendente ------------------------------
+    df_pessoas_pendentes = df_pessoas[df_pessoas["senha"].isna()]
+
+    if len(df_pessoas_pendentes) > 0:
+        st.write("**Convites pendentes**")
+
+        # Mostrar dataframe
+        st.dataframe(df_pessoas_pendentes)
+
+
+
+    # Filtra usuários com convite pendente ------------------------------
+    df_pessoas_inativas = df_pessoas[df_pessoas["status"] == "inativo"]
+
+    if len(df_pessoas_inativas) > 0:
+
+        st.write("**Inativos(as)**")
+
+        # Mostrar dataframe
+        st.dataframe(df_pessoas_inativas)
 
