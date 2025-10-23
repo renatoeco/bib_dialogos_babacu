@@ -114,7 +114,7 @@ TIPOS_MIDIA = {
     "Legislação": ":material/balance: Legislação",
     "Ponto de interesse": ":material/location_on: Ponto de interesse",
     "Organização": ":material/things_to_do: Organização",
-    "Projetos": ":material/assignment: Projetos"
+    "Projeto": ":material/assignment: Projeto"
 }
 
 TIPOS_MIDIA_ICONE = {
