@@ -7,6 +7,7 @@ import tempfile
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 from io import BytesIO
+import pandas as pd
 
 
 # ------------------ Bibliotecas de terceiros ------------------ #
@@ -14,6 +15,10 @@ import streamlit as st
 from pymongo import MongoClient
 from PIL import Image
 from pdf2image import convert_from_path
+from email.mime.text import MIMEText  
+import smtplib  
+
+
 
 # Google Drive API
 from pydrive2.auth import GoogleAuth
@@ -1909,6 +1914,101 @@ with tab_acervo:
         st.write('')
         st.write("Em construção")
 
+
+
+
+# #####################################################################################
 # PESSOAS
+# #####################################################################################
+
+
+# FUNÇÕES AUXILIARES -----------------------------
+
+# Diálogo para convidar pessoa
+@st.dialog("Enviar um convite")
+def convidar_pessoa():
+
+    with st.form("Convidar pessoa"):
+        email_invite = st.text_input("Email")
+
+        permissao = st.selectbox(
+            "Tipo de usuário",
+            ["Visitante", "Editor", "Administrador"]
+        )
+
+        if st.form_submit_button("Enviar convite", type="primary"):
+
+            pessoas.insert_one({"e_mail": email_invite,
+                                "permissao": permissao,
+                                "status": "ativo"})
+            
+            # Enviar o email
+            enviar_convite(email_invite)
+
+            st.success("Convite enviado com sucesso!")
+
+
+
+
+# Função para enviar um e_mail com convite
+def enviar_convite(destinatario):
+    # Dados de autenticação, retirados do arquivo secrets.toml
+    remetente = st.secrets["senhas_email"]["endereco_email"]
+    senha = st.secrets["senhas_email"]["senha_email"]
+
+    # Conteúdo do e_mail
+    assunto = "Convite para a Biblioteca Diálogos do Babaçu"
+    corpo = f"""
+    <html>
+        <body>
+            <p style='font-size: 1.5em;'>
+                Olá. Você recebeu um convite para acessar a Biblioteca Diálogos do Babaçu.
+            </p>
+
+            <p style='font-size: 1.5em;'>
+                Acesse o link abaixo e clique em <strong>esqueci a senha</strong>:
+            </p>
+
+            <p style='font-size: 1.5em;'>
+                <strong><a href="https://bibliotecababacu.streamlit.app/">Biblioteca Diálogos do Babaçu</a></strong>
+            </p>
+        </body>
+    </html>
+    """
+
+    # Cria o e_mail formatado com HTML
+    msg = MIMEText(corpo, "html", "utf-8")
+    msg["Subject"] = assunto
+    msg["From"] = remetente
+    msg["To"] = destinatario
+
+    # Tenta enviar o e_mail via SMTP seguro (SSL)
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(remetente, senha)
+            server.sendmail(remetente, destinatario, msg.as_string())
+        return True
+    except Exception as e:
+        st.error(f"Erro ao enviar e-mail: {e}")
+        return False
+
+
+
+
 with tab_pessoas:
-    st.write("Em construção")
+    st.write('')
+
+    with st.container(horizontal=True, horizontal_alignment="left"):
+
+        st.button("Convidar", on_click=convidar_pessoa, icon=":material/person_add:", width=250)
+
+    st.write('')
+
+    st.write("**Pessoas com acesso ao site**")
+    
+    # Criar dataframe da coleção pessoas
+    df_pessoas = pd.DataFrame(list(pessoas.find()))
+
+    # Mostrar dataframe
+    st.dataframe(df_pessoas)
+
