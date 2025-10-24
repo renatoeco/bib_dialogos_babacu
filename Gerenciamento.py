@@ -1562,7 +1562,7 @@ with tab_acervo:
         
         # Datas
         col1, col2 = st.columns(2)
-        data_inicio = col1.date_input("Data de inicio")
+        data_inicio = col1.date_input("Data de inicio", min_value=datetime(1900, 1, 1))
         data_fim = col2.date_input("Data de fim")
         # Converter para datetime
         data_inicio = datetime(data_inicio.year, data_inicio.month, data_inicio.day)
