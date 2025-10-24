@@ -245,6 +245,7 @@ def login():
                 if bcrypt.checkpw(password.encode("utf-8"), senha_hash_armazenada):
                     st.session_state["logged_in"] = True
                     st.session_state["nome"] = usuario_encontrado.get("nome_completo")
+                    st.session_state["permissao"] = usuario_encontrado.get("permissao")
                     st.rerun()
                 else:
                     st.error("E-mail ou senha inválidos!")
@@ -275,25 +276,45 @@ if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
 else:
 
 
+    # PÁGINAS -----------------------------------------
+
     # Mostra menu de navegação se estiver logado
-    pg = st.navigation([
-        "Biblioteca.py", 
-        "Mapa.py",
-        "Gerenciamento.py", 
-       
-    ])
 
-    pg_com_icones = st.navigation([
-    st.Page("Biblioteca.py", title="Biblioteca", icon=":material/menu_book:"), # Ícone de Material Design para livro/menu
-    st.Page("Mapa.py", title="Mapa", icon=":material/map:"),           # Ícone de Material Design para mapa
-    st.Page("Gerenciamento.py", title="Gerenciamento", icon=":material/settings:"), # Ícone de Material Design para gerenciamento
-        # Adicione as outras páginas aqui, cada uma com seu respectivo ícone
-    ])
+# ??????????????????
+    # st.sidebar.write(st.session_state)
 
-    # Executa a página selecionada
-    pg_com_icones.run()
+    # MENU DE VISITANTE
+    if st.session_state["permissao"] == "Visitante":
+
+        pg = st.navigation([
+            "Biblioteca.py", 
+            "Mapa.py",
+        ])
+
+        pg_com_icones = st.navigation([
+        st.Page("Biblioteca.py", title="Biblioteca", icon=":material/menu_book:"), 
+        st.Page("Mapa.py", title="Mapa", icon=":material/map:"),           
+        ])
+
+        # Executa a página selecionada
+        pg_com_icones.run()
+
+    else:
+
+        pg = st.navigation([
+            "Biblioteca.py", 
+            "Mapa.py",
+            "Gerenciamento.py", 
+        
+        ])
+
+        pg_com_icones = st.navigation([
+        st.Page("Biblioteca.py", title="Biblioteca", icon=":material/menu_book:"), 
+        st.Page("Mapa.py", title="Mapa", icon=":material/map:"),           
+        st.Page("Gerenciamento.py", title="Gerenciamento", icon=":material/settings:"), 
+        ])
+
+        # Executa a página selecionada
+        pg_com_icones.run()
 
 
-
-    # Executa a página selecionada
-    # pg.run()

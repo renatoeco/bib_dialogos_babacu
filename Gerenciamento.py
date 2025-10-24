@@ -2155,21 +2155,9 @@ with tab_acervo:
                             st.error("Tipo de documento não mapeado para uma coleção.")
 
 
-
-                        # if colecao:
-                        #     resultado = colecao.delete_one({"_id": ObjectId(documento_escolhido["_id"])})
-                        #     if resultado.deleted_count > 0:
-                        #         st.success(f"Documento '{titulo_escolhido}' excluído com sucesso!")
-                        #         time.sleep(2)
-                        #         st.rerun()
-                        #     else:
-                        #         st.error("Não foi possível excluir o documento.")
-                        # else:
-                        #     st.error("Coleção não definida para este tipo de documento.")
             else:
                 st.info("Não há documentos cadastrados para este tipo.")
-        # else:
-        #     st.info("Selecione um tipo de documento para prosseguir.")
+
 
 
 
@@ -2327,67 +2315,64 @@ def editar_pessoa():
 with tab_pessoas:
     st.write('')
 
-    # TRATAMENTO DOS DADOS ###############
+    # TELA SOMENTE PARA ADMINISTRADOR
+    if st.session_state.permissao == "Administrador":
+   
     
-    # Criar dataframe da coleção pessoas
-    df_pessoas = pd.DataFrame(list(pessoas.find()))
+        # TRATAMENTO DOS DADOS ###############
+        
+        # Criar dataframe da coleção pessoas
+        df_pessoas = pd.DataFrame(list(pessoas.find()))
 
-    # Renomar as colunas do dataframe
-    df_pessoas = df_pessoas.rename(columns={
-        "nome_completo": "Nome",
-        "e_mail": "E-mail",
-        "status": "Status",
-        "permissao": "Permissão"
-    })
+        # Renomar as colunas do dataframe
+        df_pessoas = df_pessoas.rename(columns={
+            "nome_completo": "Nome",
+            "e_mail": "E-mail",
+            "status": "Status",
+            "permissao": "Permissão"
+        })
 
-    # Drop das colunas senha e _id
-    # df_pessoas = df_pessoas.drop(columns=["senha", "_id"])
- 
     
+        # BOTÕES #############
+        with st.container(horizontal=True, horizontal_alignment="left"):
+            st.button("Convidar", on_click=convidar_pessoa, icon=":material/person_add:", width=250)
+            st.button("Editar", on_click=editar_pessoa, icon=":material/person_edit:", width=250)
+
+        st.write('')
 
 
+        # Filtra usuários ativos ------------------------------
+        st.write("**Pessoas com acesso ao site**")
 
-
-    # BOTÕES #############
-    with st.container(horizontal=True, horizontal_alignment="left"):
-        st.button("Convidar", on_click=convidar_pessoa, icon=":material/person_add:", width=250)
-        st.button("Editar", on_click=editar_pessoa, icon=":material/person_edit:", width=250)
-
-    st.write('')
-
-
-    # Filtra usuários ativos ------------------------------
-    st.write("**Pessoas com acesso ao site**")
-
-    df_pessoas_ativas = df_pessoas[
-        (df_pessoas["senha"].notna()) & 
-        (df_pessoas["Status"] == "ativo")
-    ]
-
-    # Mostrar dataframe
-    st.dataframe(df_pessoas_ativas.drop(columns=["senha", "_id"]), hide_index=True)
-
-
-
-
-    # Filtra usuários com convite pendente ------------------------------
-    df_pessoas_pendentes = df_pessoas[df_pessoas["senha"].isna()]
-
-    if len(df_pessoas_pendentes) > 0:
-        st.write("**Convites pendentes**")
+        df_pessoas_ativas = df_pessoas[
+            (df_pessoas["senha"].notna()) & 
+            (df_pessoas["Status"] == "ativo")
+        ]
 
         # Mostrar dataframe
-        st.dataframe(df_pessoas_pendentes.drop(columns=["senha", "_id", "Nome", "Status"]), hide_index=True)
+        st.dataframe(df_pessoas_ativas.drop(columns=["senha", "_id"]), hide_index=True)
 
 
+        # Filtra usuários com convite pendente ------------------------------
+        df_pessoas_pendentes = df_pessoas[df_pessoas["senha"].isna()]
 
-    # Filtra usuários com convite pendente ------------------------------
-    df_pessoas_inativas = df_pessoas[df_pessoas["Status"] == "inativo"]
+        if len(df_pessoas_pendentes) > 0:
+            st.write("**Convites pendentes**")
 
-    if len(df_pessoas_inativas) > 0:
+            # Mostrar dataframe
+            st.dataframe(df_pessoas_pendentes.drop(columns=["senha", "_id", "Nome", "Status"]), hide_index=True)
 
-        st.write("**Inativos(as)**")
 
-        # Mostrar dataframe
-        st.dataframe(df_pessoas_inativas.drop(columns=["senha", "_id"]), hide_index=True)
+        # Filtra usuários com convite pendente ------------------------------
+        df_pessoas_inativas = df_pessoas[df_pessoas["Status"] == "inativo"]
 
+        if len(df_pessoas_inativas) > 0:
+
+            st.write("**Inativos(as)**")
+
+            # Mostrar dataframe
+            st.dataframe(df_pessoas_inativas.drop(columns=["senha", "_id"]), hide_index=True)
+
+
+    elif st.session_state.permissao == "Visitante" or st.session_state.permissao == "Editor":
+        st.write("Gerenciamento de pessoas disponível apenas para administradores.")
