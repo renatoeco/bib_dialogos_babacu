@@ -2214,11 +2214,11 @@ def enviar_convite(destinatario):
             </p>
 
             <p style='font-size: 1.5em;'>
-                Acesse o link abaixo e clique em <strong>esqueci a senha</strong>:
+                Acesse o link abaixo:
             </p>
 
             <p style='font-size: 1.5em;'>
-                <strong><a href="https://bibliotecababacu.streamlit.app/">Biblioteca Diálogos do Babaçu</a></strong>
+                <strong><a href="https://bibliotecababacu.streamlit.app/">Biblioteca Diálogos do Babaçu</a></strong> e clique em <strong>esqueci a senha</strong>.
             </p>
         </body>
     </html>
