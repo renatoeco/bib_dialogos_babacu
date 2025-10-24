@@ -174,10 +174,10 @@ with st.expander("Filtros"):
         col1, col2, col3 = st.columns([6, 4, 2])
         busca_texto = col1.text_input("Buscar palavra chave")
 
-        col3.write('')
+        # col3.write('')
         # col3.write('')
 
-        filtrar = col3.form_submit_button("Filtrar", icon=":material/filter_list:", type="primary", use_container_width=True)
+        filtrar = st.form_submit_button("Filtrar", icon=":material/filter_list:", type="primary", width=200)
 
 
 
@@ -417,7 +417,6 @@ if arquivos:
                     # Link para a pasta com vários arquivos
                     subfolder_id = arq.get("subfolder_id", "")
                     link = f"https://drive.google.com/drive/folders/{subfolder_id}"
-                    st.link_button("Ver detalhes", url=link, type="primary")
 
                 if tipo == "Pesquisa":
 
