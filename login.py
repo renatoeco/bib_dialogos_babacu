@@ -5,6 +5,7 @@ import random
 import smtplib  
 from email.mime.text import MIMEText  
 from funcoes_auxiliares import conectar_mongo_dialogos_babacu  # Função personalizada para conectar ao MongoDB
+import bcrypt
 
 
 ##############################################################################################################
@@ -147,11 +148,21 @@ def recuperar_senha_dialog():
 
                     if usuario:
                         try:
-                            # Atualiza a senha no banco de dados
+
+                            # Gera hash seguro da senha
+                            hash_senha = bcrypt.hashpw(nova_senha.encode("utf-8"), bcrypt.gensalt())
+
+                            # Atualiza no banco o hash, não a senha em texto puro
                             result = colaboradores.update_one(
                                 {"e_mail": email},
-                                {"$set": {"senha": nova_senha}}
+                                {"$set": {"senha": hash_senha}}
                             )
+
+                            # # Atualiza a senha no banco de dados
+                            # result = colaboradores.update_one(
+                            #     {"e_mail": email},
+                            #     {"$set": {"senha": nova_senha}}
+                            # )
 
                             if result.matched_count > 0:
                                 st.success("Senha redefinida com sucesso!")
@@ -179,22 +190,17 @@ def recuperar_senha_dialog():
 # TELA DE LOGIN
 ##############################################################################################################
 
+
+
+
 def login():
     # Cria colunas para centralizar o formulário
     col1, col2, col3 = st.columns([2, 3, 2])   
-   
+
     # Exibe o logo
     col2.image("images/logo dialogos do babacu.png", width=199)
 
-    # st.markdown(
-    #     """
-    #     <div style="text-align: center;">
-    #         <img src="aux/logo dialogos do babacu.png" width="300"/>
-    #     </div>
-    #     """,
-    #     unsafe_allow_html=True
-    # )
-    # col2.write('')
+    col2.write('')
     col2.write('')
     col2.write('')
     col2.write('')
@@ -208,43 +214,43 @@ def login():
 
     col1, col2, col3 = st.columns([2, 3, 2])   
 
-
     with col2.form("login_form", border=False):
-        # Novo campo de e-mail
         email_input = st.text_input("Insira seu e-mail")
-
-        # Campo de senha
         password = st.text_input("Insira a senha", type="password")
 
         st.write('')
+
         if st.form_submit_button("Entrar"):
+            # Busca apenas por e-mail no banco
             usuario_encontrado = colaboradores.find_one({
-                "e_mail": {"$regex": f"^{email_input.strip()}$", "$options": "i"},
-                "senha": password
+                "e_mail": {"$regex": f"^{email_input.strip()}$", "$options": "i"}
             })
 
-            # Salva o email para possível recuperação de senha
             st.session_state["email_para_recuperar"] = email_input.strip()
 
             if usuario_encontrado:
+                # Verifica se o usuário está ativo
                 if usuario_encontrado.get("status", "").lower() != "ativo":
                     st.error("Usuário inativo. Entre em contato com o renato@ispn.org.br.")
                     return
 
-                # tipo_usuario = [x.strip() for x in usuario_encontrado.get("tipo de usuário", "").split(",")]
+                # Pegando o hash da senha armazenado no banco
+                senha_hash_armazenada = usuario_encontrado.get("senha", "")
 
-                # Autentica
-                st.session_state["logged_in"] = True
-                # st.session_state["tipo_usuario"] = tipo_usuario
-                st.session_state["nome"] = usuario_encontrado.get("nome_completo")
-                # st.session_state["cpf"] = usuario_encontrado.get("CPF")
-                # st.session_state["id_usuario"] = usuario_encontrado.get("_id")
-                st.rerun()
+                # É importante garantir que está em bytes
+                if isinstance(senha_hash_armazenada, str):
+                    senha_hash_armazenada = senha_hash_armazenada.encode("utf-8")
+
+                # Verifica a senha digitada com o hash usando bcrypt
+                if bcrypt.checkpw(password.encode("utf-8"), senha_hash_armazenada):
+                    st.session_state["logged_in"] = True
+                    st.session_state["nome"] = usuario_encontrado.get("nome_completo")
+                    st.rerun()
+                else:
+                    st.error("E-mail ou senha inválidos!")
             else:
                 st.error("E-mail ou senha inválidos!")
 
-    
-    
     # Botão para recuperar senha
     col2.write('')
     col2.write('')
@@ -252,6 +258,9 @@ def login():
 
     # Informação adicional
     col2.markdown("<div style='color: #007ad3;'><br>É o seu primeiro acesso?<br>Clique em \"Esqueci a senha\".</div>", unsafe_allow_html=True)
+
+
+
 
 
 ##############################################################################################################
