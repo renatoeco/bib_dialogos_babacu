@@ -22,7 +22,7 @@ db = client[st.secrets.mongo.bd_dialogos]
 
 # Carregando cada coleção
 
-pontos = db["pontos_de_interesse"]
+pontos = db["pontos_interesse"]
 
 df_pontos = pd.DataFrame(list(pontos.find()))
 
