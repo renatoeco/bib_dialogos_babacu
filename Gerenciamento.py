@@ -1528,7 +1528,7 @@ with tab_acervo:
                 }
 
                 # Insere o documento na coleção
-                pontos.insert_one(data)   
+                pontos_interesse.insert_one(data)   
 
                 # Mostra mensagem de sucesso
                 st.success("Ponto de interesse enviado com sucesso!")
