@@ -305,7 +305,6 @@ if arquivos:
                         </div>
                         """, unsafe_allow_html=True)
 
-
                 # Renderiza icone assignment
                 if tipo == "Projeto":
                     st.markdown("""
@@ -317,7 +316,6 @@ if arquivos:
                         </div>
                         """, unsafe_allow_html=True)
 
-
                 # Renderiza icone assignment
                 if tipo == "Pesquisa":
                     st.markdown("""
@@ -328,8 +326,6 @@ if arquivos:
                             </span>
                         </div>
                         """, unsafe_allow_html=True)
-
-
 
                 if tipo == "Organização":
 
@@ -399,8 +395,12 @@ if arquivos:
                 sigla_container = st.container()
                 st.write(descricao)
                 autor_container = st.container()
-                st.write(f"**Organização:** {organizacao}")
-                st.write(f"**Tema:** {tema}")
+                
+                if organizacao and organizacao.strip():
+                    st.write(f"**Organização:** {organizacao}")
+                
+                if tema and tema.strip():
+                    st.write(f"**Tema:** {tema}")
                 
                 # Se for organização ou projeto, não tem autor
                 if tipo != "Organização" and tipo != "Projeto":
