@@ -24,6 +24,8 @@ colaboradores = db["pessoas"]
 # FUNÇÕES AUXILIARES
 ##############################################################################################################
 
+if "permissao" not in st.session_state:
+    st.session_state.permissao = ""
 
 def encontrar_usuario_por_email(colaboradores, email_busca):
     usuario = colaboradores.find_one({"e_mail": email_busca})
@@ -99,15 +101,17 @@ def recuperar_senha_dialog():
                             return
                         
                         codigo = str(random.randint(100, 999))  # Gera um código aleatório
-                        if enviar_email(email, codigo):  # Envia o código por e-mail
-                            st.session_state.codigo_verificacao = codigo
-                            st.session_state.codigo_enviado = True
-                            st.session_state.email_verificado = email
-                            st.session_state["nome"] = nome
-                            
-                            st.success(f"Código enviado para {email}.")
-                        else:
-                            st.error("Erro ao enviar o e-mail. Tente novamente.")
+                        with st.spinner("Enviando código de verificação..."):
+                            if enviar_email(email, codigo):  # Envia o código por e-mail
+                                st.session_state.codigo_verificacao = codigo
+                                st.session_state.codigo_enviado = True
+                                st.session_state.email_verificado = email
+                                st.session_state["nome"] = nome
+                                st.session_state["permissao"] = verificar_colaboradores["permissao"]
+                                
+                                st.success(f"Código enviado para {email}.")
+                            else:
+                                st.error("Erro ao enviar o e-mail. Tente novamente.")
                     else:
                         st.error("E-mail não encontrado. Tente novamente.")
                 else:
@@ -183,6 +187,8 @@ def recuperar_senha_dialog():
                         st.error("Nenhum usuário encontrado com esse e-mail.")
                 else:
                     st.error("As senhas não coincidem ou estão vazias.")
+
+                st.rerun()
 
 
 
@@ -299,6 +305,8 @@ else:
         # Executa a página selecionada
         pg_com_icones.run()
 
+
+    # MENU DE EDITOR E ADMINISTRADOR
     else:
 
         pg = st.navigation([

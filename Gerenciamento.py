@@ -2174,18 +2174,19 @@ with tab_acervo:
 def convidar_pessoa():
 
     with st.form("Convidar pessoa"):
-        email_invite = st.text_input("Email")
 
+        nome_completo = st.text_input("Nome completo")
+        email_invite = st.text_input("Email")
         permissao = st.selectbox(
             "Tipo de usuário",
             ["Visitante", "Editor", "Administrador"]
         )
-
         status = "ativo"
 
         if st.form_submit_button("Enviar convite", type="primary", icon=":material/mail:"):
 
             pessoas.insert_one({"e_mail": email_invite,
+                                "nome_completo": nome_completo,
                                 "permissao": permissao,
                                 "status": status})
             
@@ -2349,8 +2350,12 @@ with tab_pessoas:
             (df_pessoas["Status"] == "ativo")
         ]
 
+
         # Mostrar dataframe
-        st.dataframe(df_pessoas_ativas.drop(columns=["senha", "_id"]), hide_index=True)
+        st.dataframe(
+            df_pessoas_ativas[["Nome", "E-mail", "Status", "Permissão"]],
+            hide_index=True
+        )
 
 
         # Filtra usuários com convite pendente ------------------------------
