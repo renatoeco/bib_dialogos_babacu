@@ -24,7 +24,7 @@ podcasts = db["podcasts"]
 sites = db["sites"]
 mapas = db["mapas"]
 legislacao = db["legislacao"]
-pontos = db["pontos_de_interesse"]
+pontos_interesse = db["pontos_interesse"]
 relatorios = db["relatorios"]
 pessoas = db["pessoas"]
 organizacoes = db["organizacoes"]
@@ -152,7 +152,7 @@ with st.expander("Filtros"):
         temas_sites = sites.distinct("tema")
         temas_mapas = mapas.distinct("tema")
         temas_legislacao = legislacao.distinct("tema")
-        temas_pontos = pontos.distinct("tema")
+        temas_pontos = pontos_interesse.distinct("tema")
         temas_relatorios = relatorios.distinct("tema")
         temas_organizacoes = organizacoes.distinct("tema")
         temas_projetos = projetos.distinct("tema")
@@ -171,11 +171,13 @@ with st.expander("Filtros"):
             selection_mode="multi"
         )
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3 = st.columns([6, 4, 2])
         busca_texto = col1.text_input("Buscar palavra chave")
 
-        filtrar = st.form_submit_button("Filtrar", icon=":material/filter_list:", type="primary")
+        col3.write('')
+        # col3.write('')
 
+        filtrar = col3.form_submit_button("Filtrar", icon=":material/filter_list:", type="primary", use_container_width=True)
 
 
 
@@ -188,7 +190,7 @@ def buscar_arquivos(query={}):
     docs_sites = list(sites.find(query))
     docs_mapas = list(mapas.find(query))
     docs_legislacao = list(legislacao.find(query))
-    docs_pontos = list(pontos.find(query))
+    docs_pontos = list(pontos_interesse.find(query))
     docs_relatorios = list(relatorios.find(query))
     docs_organizacoes = list(organizacoes.find(query))
     docs_projetos = list(projetos.find(query))
@@ -273,6 +275,7 @@ if arquivos:
 
             with st.container(border=True, width=280, height=500, key=arq.get("_id", None)):
 
+                # ??????????????????????
                 # st.write(arq)
 
                 tipo = arq.get("tipo", "Tipo não informado")
@@ -352,6 +355,9 @@ if arquivos:
 
                 # Renderiza miniatura
                 if thumb_link:
+
+                    # ?????????????????????/
+                    # st.write(thumb_link)
                 
                     try:
                         # --- Caso seja Google Drive ---
