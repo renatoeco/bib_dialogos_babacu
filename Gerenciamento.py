@@ -10,6 +10,10 @@ from io import BytesIO
 import pandas as pd
 from bson import ObjectId
 
+
+import pypdfium2 as pdfium
+
+
 # ------------------ Bibliotecas de terceiros ------------------ #
 import streamlit as st
 from pymongo import MongoClient
@@ -328,8 +332,6 @@ def upload_thumbnail_to_drive(local_path, nome_base, tipo):
 
 
 
-
-# Envia o arquivo e a miniatura para o drive
 def upload_to_drive(file, filename, tipo):
     if tipo not in TIPO_PASTA_MAP:
         return None, None
@@ -347,7 +349,9 @@ def upload_to_drive(file, filename, tipo):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = f"{timestamp}_{base_name}"
 
+    # ------------------------
     # Cria subpasta no Drive
+    # ------------------------
     subfolder = drive.CreateFile({
         'title': folder_name,
         'mimeType': 'application/vnd.google-apps.folder',
@@ -356,43 +360,61 @@ def upload_to_drive(file, filename, tipo):
     subfolder.Upload()
     subfolder_id = subfolder['id']
 
-    # Salva arquivo temporariamente
-    with open(filename, "wb") as f:
+    # ------------------------
+    # Salva arquivo local temporário
+    # ------------------------
+    temp_path = os.path.join(tempfile.gettempdir(), filename)
+    with open(temp_path, "wb") as f:
         f.write(file.getbuffer())
 
+    # ------------------------
     # Upload do arquivo original
-    gfile = drive.CreateFile({'title': filename, 'parents': [{'id': subfolder_id}]})
-    gfile.SetContentFile(filename)
+    # ------------------------
+    gfile = drive.CreateFile({
+        'title': filename,
+        'parents': [{'id': subfolder_id}]
+    })
+    gfile.SetContentFile(temp_path)
     gfile.Upload()
     file_link = f"https://drive.google.com/file/d/{gfile['id']}/view"
 
     # ------------------------
-    # Miniatura (imagem ou PDF)
+    # Geração da miniatura
     # ------------------------
     thumb_link = None
+
     try:
         thumb_name = f"miniatura_{base_name}.png"
         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
 
-        # Se for imagem
-        if ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
-            img = Image.open(filename)
+        # 📸 IMAGEM
+        if ext.lower() in [".png", ".jpg", ".jpeg", ".webp"]:
+            img = Image.open(temp_path)
+            img = img.convert("RGB")
             w, h = img.size
-            new_height = int((280 / w) * h)  # mantém proporção
+            new_height = int((280 / w) * h)
             img = img.resize((280, new_height), Image.Resampling.LANCZOS)
             img.save(thumb_path, "PNG")
 
-        # Se for PDF → pega primeira página
-        elif ext.lower() == '.pdf':
-            pages = convert_from_path(filename, dpi=150, first_page=1, last_page=1)
-            if pages:
-                img = pages[0]
-                w, h = img.size
-                new_height = int((280 / w) * h)  # mantém proporção
-                img = img.resize((280, new_height), Image.Resampling.LANCZOS)
-                img.save(thumb_path, "PNG")
+        # 📄 PDF (pypdfium2)
+        elif ext.lower() == ".pdf":
+            pdf = pdfium.PdfDocument(temp_path)
+            if len(pdf) == 0:
+                raise Exception("PDF sem páginas")
 
-        # Se gerou thumb, faz upload no Drive
+            page = pdf[0]
+            bitmap = page.render(scale=1.2, rotation=0)
+            img = bitmap.to_pil()
+            img = img.convert("RGB")
+
+            w, h = img.size
+            new_height = int((280 / w) * h)
+            img = img.resize((280, new_height), Image.Resampling.LANCZOS)
+            img.save(thumb_path, "PNG")
+
+        # ------------------------
+        # Upload da miniatura
+        # ------------------------
         if os.path.exists(thumb_path):
             thumb_file = drive.CreateFile({
                 'title': thumb_name,
@@ -406,10 +428,106 @@ def upload_to_drive(file, filename, tipo):
     except Exception as e:
         st.warning(f"Miniatura não criada: {e}")
 
-    # Remove arquivo local original
-    os.remove(filename)
+    # ------------------------
+    # Cleanup
+    # ------------------------
+    os.remove(temp_path)
 
     return file_link, thumb_link
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # Envia o arquivo e a miniatura para o drive
+# def upload_to_drive(file, filename, tipo):
+#     if tipo not in TIPO_PASTA_MAP:
+#         return None, None
+
+#     tipo_key = TIPO_PASTA_MAP[tipo]
+#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
+
+#     if not parent_folder_id:
+#         st.error(f"Pasta não configurada no secrets: {tipo_key}")
+#         return None, None
+
+#     drive = authenticate_drive()
+
+#     base_name, ext = os.path.splitext(filename)
+#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+#     folder_name = f"{timestamp}_{base_name}"
+
+#     # Cria subpasta no Drive
+#     subfolder = drive.CreateFile({
+#         'title': folder_name,
+#         'mimeType': 'application/vnd.google-apps.folder',
+#         'parents': [{'id': parent_folder_id}]
+#     })
+#     subfolder.Upload()
+#     subfolder_id = subfolder['id']
+
+#     # Salva arquivo temporariamente
+#     with open(filename, "wb") as f:
+#         f.write(file.getbuffer())
+
+#     # Upload do arquivo original
+#     gfile = drive.CreateFile({'title': filename, 'parents': [{'id': subfolder_id}]})
+#     gfile.SetContentFile(filename)
+#     gfile.Upload()
+#     file_link = f"https://drive.google.com/file/d/{gfile['id']}/view"
+
+#     # ------------------------
+#     # Miniatura (imagem ou PDF)
+#     # ------------------------
+#     thumb_link = None
+#     try:
+#         thumb_name = f"miniatura_{base_name}.png"
+#         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
+
+#         # Se for imagem
+#         if ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
+#             img = Image.open(filename)
+#             w, h = img.size
+#             new_height = int((280 / w) * h)  # mantém proporção
+#             img = img.resize((280, new_height), Image.Resampling.LANCZOS)
+#             img.save(thumb_path, "PNG")
+
+#         # Se for PDF → pega primeira página
+#         elif ext.lower() == '.pdf':
+#             pages = convert_from_path(filename, dpi=150, first_page=1, last_page=1)
+#             if pages:
+#                 img = pages[0]
+#                 w, h = img.size
+#                 new_height = int((280 / w) * h)  # mantém proporção
+#                 img = img.resize((280, new_height), Image.Resampling.LANCZOS)
+#                 img.save(thumb_path, "PNG")
+
+#         # Se gerou thumb, faz upload no Drive
+#         if os.path.exists(thumb_path):
+#             thumb_file = drive.CreateFile({
+#                 'title': thumb_name,
+#                 'parents': [{'id': subfolder_id}]
+#             })
+#             thumb_file.SetContentFile(thumb_path)
+#             thumb_file.Upload()
+#             thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
+#             os.remove(thumb_path)
+
+#     except Exception as e:
+#         st.warning(f"Miniatura não criada: {e}")
+
+#     # Remove arquivo local original
+#     os.remove(filename)
+
+#     return file_link, thumb_link
 
 
 

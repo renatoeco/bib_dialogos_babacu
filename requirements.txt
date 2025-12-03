@@ -40,6 +40,7 @@ PyDrive2==1.21.3
 pymongo==4.15.3
 pyOpenSSL==24.2.1
 pyparsing==3.2.5
+pypdfium2==5.1.0
 python-dateutil==2.9.0.post0
 pytz==2025.2
 PyYAML==6.0.3
