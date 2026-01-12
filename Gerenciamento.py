@@ -246,7 +246,7 @@ def authenticate_drive():
         return drive
 
 
- # Envia só a thumbnail / miniatura para o drive
+# Envia só a thumbnail / miniatura para o drive
 def upload_thumbnail_to_drive(local_path, nome_base, tipo):
     """
     Recebe um UploadedFile (Streamlit), cria thumbnail de 280px de largura 
