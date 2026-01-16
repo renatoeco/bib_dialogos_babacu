@@ -204,7 +204,7 @@ def login():
     col1, col2, col3 = st.columns([2, 3, 2])   
 
     # Exibe o logo
-    col2.image("images/logo dialogos do babacu.png", width=199)
+    col2.image("images/logo dialogos do babacu.png", width=300)
 
     col2.write('')
     col2.write('')
@@ -212,7 +212,7 @@ def login():
     col2.write('')
 
     # Exibe o título 
-    st.markdown("<div style='text-align: center;'><h1 style='color: #666;'><strong>Biblioteca Diálogos do Babaçu</strong></h1></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center;'><h1 style='color: #666;'><strong>Biblioteca Digital de Gestão do Conhecimento</strong></h1></div>", unsafe_allow_html=True)
     st.write('')
     st.write('')
     st.write('')
