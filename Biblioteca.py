@@ -255,6 +255,37 @@ if filtrar:
 if arquivos:
     # Ordenação e limpeza de campos
     arquivos.sort(key=lambda x: x.get("data_upload", None), reverse=True)
+    
+    # ------------------ PAGINAÇÃO ------------------ #
+
+    ITENS_POR_PAGINA = 25
+
+    # Inicializa página no session_state
+    if "pagina_atual" not in st.session_state:
+        st.session_state.pagina_atual = 1
+
+    total_itens = len(arquivos)
+    total_paginas = max(1, (total_itens + ITENS_POR_PAGINA - 1) // ITENS_POR_PAGINA)
+
+    # Sidebar - controle de página
+    with st.sidebar:
+
+        pagina = st.number_input(
+            "Página",
+            min_value=1,
+            max_value=total_paginas,
+            step=1,
+            width=130,
+        )
+
+        st.session_state.pagina_atual = pagina
+
+        st.caption(f"Total de páginas: {total_paginas}")
+        
+    inicio = (st.session_state.pagina_atual - 1) * ITENS_POR_PAGINA
+    fim = inicio + ITENS_POR_PAGINA
+
+    arquivos_paginados = arquivos[inicio:fim]
 
 
     for item in arquivos:  # Para cada dicionário (item) dentro da lista 'arquivos'
@@ -270,7 +301,7 @@ if arquivos:
 
     # Container horizontal para os cards
     with st.container(border=False, horizontal=True, width='stretch'):
-        for arq in arquivos:
+        for arq in arquivos_paginados:
 
 
             with st.container(border=True, width=280, height=500, key=arq.get("_id", None)):
