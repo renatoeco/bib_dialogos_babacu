@@ -2,6 +2,7 @@
 import streamlit as st
 from pymongo import MongoClient
 import pandas as pd
+from funcoes_auxiliares import conectar_mongo_dialogos_babacu, barra_de_logos
 
 
 from pydrive2.auth import GoogleAuth
@@ -17,8 +18,8 @@ import os
 # Configurações do MongoDB
 # --------------------------------------------------------------
 
-client = MongoClient(st.secrets.mongo.string_conexao_mongo)
-db = client[st.secrets.mongo.bd_dialogos]
+db = conectar_mongo_dialogos_babacu()
+
 
 # Carregando cada coleção
 
@@ -55,4 +56,12 @@ df_pontos['longitude'] = df_pontos['longitude'].astype(float)
 
 st.header("Mapa dos Pontos de Interesse")
 st.write('')
-st.map(df_pontos, latitude="latitude", longitude="longitude", size=200)
+st.map(df_pontos, latitude="latitude", longitude="longitude", size=200, height=650)
+
+
+
+
+# Barra de logos
+barra_de_logos()
+
+

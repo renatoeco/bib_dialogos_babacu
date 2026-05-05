@@ -14,5 +14,20 @@ def conectar_mongo_dialogos_babacu():
 
 # Barra de logos
 def barra_de_logos():
-    
-    col1, col2 = st.columns([1, 3])
+
+    st.write('')
+    st.write('')
+    st.write('')
+    st.write('')
+    st.write('')
+
+    col1, espaco, col2 = st.columns([2, 1, 6])
+
+    with col1:
+        st.write('**Instituição facilitadora**')
+        st.write('')
+        st.image("images/logo_ISPN_horizontal.png", width=250)
+
+    with col2:
+        st.write('**Realização**')
+        st.image("images/logos_bateria.png", width=600)

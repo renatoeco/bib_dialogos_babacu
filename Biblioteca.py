@@ -5,7 +5,7 @@ from pydrive2.drive import GoogleDrive
 from datetime import datetime, UTC
 import tempfile
 import json
-# import os
+from funcoes_auxiliares import conectar_mongo_dialogos_babacu, barra_de_logos  
 import re
 
 
@@ -13,8 +13,10 @@ import re
 # Configurações do MongoDB
 # --------------------------------------------------------------
 
-client = MongoClient(st.secrets.mongo.string_conexao_mongo)
-db = client[st.secrets.mongo.bd_dialogos]
+db = conectar_mongo_dialogos_babacu()
+
+# client = MongoClient(st.secrets.mongo.string_conexao_mongo)
+# db = client[st.secrets.mongo.bd_dialogos]
 
 # Carragando cada coleção
 publicacoes = db["publicacoes"]
@@ -504,6 +506,6 @@ else:
 
 
 # Barra de logos
-# barra_de_logos()
+barra_de_logos()
 
 

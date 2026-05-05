@@ -1,4 +1,3 @@
-# ------------------ Bibliotecas padrão (Python) ------------------ #
 import os
 import re
 import time
@@ -9,12 +8,8 @@ from zoneinfo import ZoneInfo
 from io import BytesIO
 import pandas as pd
 from bson import ObjectId
-
-
+from funcoes_auxiliares import conectar_mongo_dialogos_babacu, barra_de_logos
 import pypdfium2 as pdfium
-
-
-# ------------------ Bibliotecas de terceiros ------------------ #
 import streamlit as st
 from pymongo import MongoClient
 from PIL import Image
@@ -33,8 +28,8 @@ from pydrive2.drive import GoogleDrive
 # Configurações do MongoDB
 # --------------------------------------------------------------
 
-client = MongoClient(st.secrets.mongo.string_conexao_mongo)
-db = client[st.secrets.mongo.bd_dialogos]
+db = conectar_mongo_dialogos_babacu()
+
 
 # Carregando cada coleção
 publicacoes = db["publicacoes"]
@@ -2499,3 +2494,6 @@ with tab_pessoas:
 
     elif st.session_state.permissao == "Visitante" or st.session_state.permissao == "Editor":
         st.write("Gerenciamento de pessoas disponível apenas para administradores.")
+
+
+
