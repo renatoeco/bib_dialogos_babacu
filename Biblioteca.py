@@ -470,6 +470,7 @@ else:
 
 
 
-
+# Barra de logos
+# barra_de_logos()
 
 

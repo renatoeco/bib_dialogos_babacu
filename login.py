@@ -4,7 +4,7 @@ import time
 import random  
 import smtplib  
 from email.mime.text import MIMEText  
-from funcoes_auxiliares import conectar_mongo_dialogos_babacu  # Função personalizada para conectar ao MongoDB
+from funcoes_auxiliares import conectar_mongo_dialogos_babacu  
 import bcrypt
 
 

@@ -9,9 +9,10 @@ def conectar_mongo_dialogos_babacu():
     return db_biblioteca
 
 
-# @st.cache_resource
-# def conectar_mongo_pls():
-#     cliente_2 = MongoClient(
-#     st.secrets["senhas"]["senha_mongo_pls"])
-#     db_pls = cliente_2["db_pls"]
-#     return db_pls
+
+
+
+# Barra de logos
+def barra_de_logos():
+    
+    col1, col2 = st.columns([1, 3])
