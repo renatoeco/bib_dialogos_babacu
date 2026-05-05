@@ -442,8 +442,41 @@ if arquivos:
                     sigla = arq.get("sigla", None)
                     sigla_container.write(f"**Sigla:** {sigla}")
                     
-                    # Websites
-                    st.write(f"**Websites:** {arq.get('websites', 'N/A')}")
+                    # -------------------------------
+                    # Websites (string separada por vírgula)
+                    # -------------------------------
+                    websites = arq.get("websites", None)
+
+                    if websites:
+                        st.write("**Websites:**")
+
+                        # Caso venha como string (seu caso atual)
+                        if isinstance(websites, str):
+
+                            # Divide pelos separadores de vírgula
+                            lista_sites = websites.split(",")
+
+                            for site in lista_sites:
+                                # Remove espaços extras antes/depois
+                                site = site.strip()
+
+                                if site:
+                                    # Garante que tem http/https
+                                    url = site if site.startswith("http") else f"https://{site}"
+
+                                    # Mostra um por linha como link clicável
+                                    st.markdown(f"[{url}]({url})")
+
+                        # Caso futuramente vire lista (já deixa preparado)
+                        elif isinstance(websites, list):
+                            for site in websites:
+                                if site:
+                                    site = site.strip()
+                                    url = site if site.startswith("http") else f"https://{site}"
+                                    st.markdown(f"[{url}]({url})")
+
+                    else:
+                        st.write("**Websites:** N/A")
 
                     # Link para a pasta com vários arquivos
                     subfolder_id = arq.get("subfolder_id", "")
