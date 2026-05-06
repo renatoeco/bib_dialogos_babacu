@@ -299,6 +299,27 @@ if arquivos:
 
     # Contagem de documentos
     st.subheader(f"{len(arquivos)} documento" if len(arquivos) == 1 else f"{len(arquivos)} documentos")
+    
+    st.write("")
+    
+    # Índices da paginação atual
+    inicio_contagem = inicio + 1 if total_itens > 0 else 0
+    fim_contagem = min(fim, total_itens)
+
+    texto_contagem = f"Listando de {inicio_contagem} a {fim_contagem} documentos"
+    st.markdown(
+        f"""
+        <p style="
+            color: #4F4F4F;
+            font-size: 0.95rem;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        ">
+            {texto_contagem}
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
     st.write("")
 
     # Container horizontal para os cards
