@@ -2090,18 +2090,331 @@ with tab_acervo:
 
                         if resultado.modified_count > 0:
                             st.success("Publicação atualizada com sucesso!")
-                            time.sleep(3)
+                            time.sleep(2)
                             st.rerun()
                         else:
                             st.warning("Nenhuma alteração foi detectada ou o documento não foi atualizado.")
 
+        # EDITAR IMAGEM
+        elif tipo_escolhido == "Imagem":
 
-        # elif tipo_escolhido == "Imagem":
-        #     editar_imagem(titulo_escolhido)
-        # elif tipo_escolhido == "Relatório":
-        #     editar_relatorio(titulo_escolhido)
-        # elif tipo_escolhido == "Vídeo":
-        #     editar_video(titulo_escolhido)
+            with st.form("Editar Imagem"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                anos = list(range(datetime.now().year, 1949, -1))
+                ano_atual = documento_escolhido.get("ano_publicacao", datetime.now().year)
+
+                if ano_atual not in anos:
+                    ano_atual = anos[0]
+
+                ano_publicacao = st.selectbox(
+                    "Ano de referência",
+                    anos,
+                    index=anos.index(ano_atual)
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "A imagem está relacionada à atuação de alguma organização?",
+                    ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                licenca = st.selectbox(
+                    "Qual é a licença de uso da imagem?",
+                    [
+                        "Protegida por direitos autorais",
+                        "Creative Commons",
+                        "Liberada para usos não-comerciais"
+                    ],
+                    index=[
+                        "Protegida por direitos autorais",
+                        "Creative Commons",
+                        "Liberada para usos não-comerciais"
+                    ].index(
+                        documento_escolhido.get(
+                            "licenca",
+                            "Protegida por direitos autorais"
+                        )
+                    )
+                )
+                
+                cols = st.columns(3)
+
+                nome_contato = cols[0].text_input(
+                    "Contato para tratar sobre direitos de uso da imagem",
+                    value=documento_escolhido.get("nome_contato", "")
+                )
+
+                telefone_contato = cols[1].text_input(
+                    "Telefone",
+                    value=documento_escolhido.get("telefone_contato", "")
+                )
+
+                email_contato = cols[2].text_input(
+                    "E-mail",
+                    value=documento_escolhido.get("email_contato", "")
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "ano_publicacao": ano_publicacao,
+                        "tema": tema,
+                        "autor": autor,
+                        "organizacao": organizacao,
+                        "licenca": licenca,
+                        "nome_contato": nome_contato,
+                        "telefone_contato": telefone_contato,
+                        "email_contato": email_contato,
+                        "tipo": documento_escolhido.get("tipo"),
+                        "link": documento_escolhido.get("link"),
+                        "thumb_link": documento_escolhido.get("thumb_link"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = imagens.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Imagem atualizada com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+                          
+        # EDITAR RELATÓRIO
+        elif tipo_escolhido == "Relatório":
+
+            with st.form("Editar Relatório"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", ""),
+                    height="content"
+                )
+
+                anos = list(range(datetime.now().year, 1949, -1))
+                ano_atual = documento_escolhido.get("ano_publicacao", datetime.now().year)
+
+                if ano_atual not in anos:
+                    ano_atual = anos[0]
+
+                ano_publicacao = st.selectbox(
+                    "Ano de publicação",
+                    anos,
+                    index=anos.index(ano_atual)
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "ano_publicacao": ano_publicacao,
+                        "tema": tema,
+                        "autor": autor,
+                        "organizacao": organizacao,
+                        "tipo": documento_escolhido.get("tipo"),
+                        "link": documento_escolhido.get("link"),
+                        "thumb_link": documento_escolhido.get("thumb_link"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = relatorios.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Relatório atualizado com sucesso!")
+                        time.sleep(3)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+                           
+        # EDITAR VÍDEO
+        elif tipo_escolhido == "Vídeo":
+
+            with st.form("Editar Vídeo"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                anos = list(range(datetime.now().year, 1949, -1))
+                ano_atual = documento_escolhido.get("ano_publicacao", datetime.now().year)
+
+                if ano_atual not in anos:
+                    ano_atual = anos[0]
+
+                ano_publicacao = st.selectbox(
+                    "Ano de publicação",
+                    anos,
+                    index=anos.index(ano_atual)
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                link_video = st.text_input(
+                    "Link do vídeo",
+                    value=documento_escolhido.get("link", "")
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "ano_publicacao": ano_publicacao,
+                        "tema": tema,
+                        "autor": autor,
+                        "organizacao": organizacao,
+                        "link": link_video,
+                        "thumb_link": documento_escolhido.get("thumb_link"),
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = videos.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Vídeo atualizado com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+                        
+                        
         # elif tipo_escolhido == "Podcast":
         #     editar_podcast(titulo_escolhido)
         # elif tipo_escolhido == "Site":
