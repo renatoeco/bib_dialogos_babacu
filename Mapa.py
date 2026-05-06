@@ -81,7 +81,8 @@ for _, row in df_pontos.iterrows():
     folium.Marker(
         location=[row["latitude"], row["longitude"]],
         popup=popup,
-        tooltip=row.get("titulo", "")
+        tooltip=row.get("titulo", ""),
+        icon=folium.Icon(color="blue", icon="info-sign")
     ).add_to(m)
 
 
