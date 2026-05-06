@@ -1914,7 +1914,19 @@ with tab_acervo:
         titulo_escolhido = st.selectbox("Escolha o documento para editar", lista_titulos)
 
         # Encontra o documento com o título escolhido
-        documento_escolhido = next((doc for doc in arquivos if doc.get("tipo") == tipo_escolhido and doc.get("titulo") == titulo_escolhido), None)
+        documento_escolhido = next(
+            (
+                doc for doc in arquivos
+                if doc.get("tipo") == tipo_escolhido
+                and doc.get("titulo") == titulo_escolhido
+            ),
+            None
+        )
+
+        # Se não encontrar documento, interrompe
+        if documento_escolhido is None:
+            st.warning("Nenhum documento deste tipo disponível para edição.")
+            st.stop()
 
 
         # EDITAR ORGANIZAÇÃO
@@ -2002,7 +2014,6 @@ with tab_acervo:
                         st.rerun()
                     else:
                         st.warning("Nenhuma alteração foi detectada ou o documento não foi atualizado.")                
-
 
         elif tipo_escolhido == "Publicação":
 
@@ -2413,18 +2424,642 @@ with tab_acervo:
                         st.rerun()
                     else:
                         st.warning("Nenhuma alteração foi detectada.")
-                        
-                        
-        # elif tipo_escolhido == "Podcast":
-        #     editar_podcast(titulo_escolhido)
-        # elif tipo_escolhido == "Site":
-        #     editar_site(titulo_escolhido)
-        # elif tipo_escolhido == "Mapa":
-        #     editar_mapa(titulo_escolhido)
-        # elif tipo_escolhido == "Legislação":
-        #     editar_legislacao(titulo_escolhido)
-        # elif tipo_escolhido == "Ponto de interesse":
-        #     editar_ponto(titulo_escolhido)
+                              
+        # EDITAR PODCAST
+        elif tipo_escolhido == "Podcast":
+
+            with st.form("Editar Podcast"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                anos = list(range(datetime.now().year, 1949, -1))
+                ano_atual = documento_escolhido.get("ano_publicacao", datetime.now().year)
+
+                if ano_atual not in anos:
+                    ano_atual = anos[0]
+
+                ano_publicacao = st.selectbox(
+                    "Ano de publicação",
+                    anos,
+                    index=anos.index(ano_atual)
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                link_podcast = st.text_input(
+                    "Link do podcast",
+                    value=documento_escolhido.get("link", "")
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "ano_publicacao": ano_publicacao,
+                        "tema": tema,
+                        "autor": autor,
+                        "organizacao": organizacao,
+                        "link": link_podcast,
+                        "thumb_link": documento_escolhido.get("thumb_link"),
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = podcasts.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Podcast atualizado com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+
+        # EDITAR SITE
+        elif tipo_escolhido == "Site":
+
+            with st.form("Editar Site"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                link_site = st.text_input(
+                    "Link do site",
+                    value=documento_escolhido.get("link", "")
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "tema": tema,
+                        "autor": autor,
+                        "organizacao": organizacao,
+                        "link": link_site,
+                        "thumb_link": documento_escolhido.get("thumb_link"),
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = sites.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Site atualizado com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+
+        # EDITAR MAPA
+        elif tipo_escolhido == "Mapa":
+
+            with st.form("Editar Mapa"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                anos = list(range(datetime.now().year, 1949, -1))
+                ano_atual = documento_escolhido.get("ano_publicacao", datetime.now().year)
+
+                if ano_atual not in anos:
+                    ano_atual = anos[0]
+
+                ano_publicacao = st.selectbox(
+                    "Ano de publicação",
+                    anos,
+                    index=anos.index(ano_atual)
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "ano_publicacao": ano_publicacao,
+                        "tema": tema,
+                        "autor": autor,
+                        "organizacao": organizacao,
+                        "link": documento_escolhido.get("link"),
+                        "thumb_link": documento_escolhido.get("thumb_link"),
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = mapas.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Mapa atualizado com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+
+        # EDITAR LEGISLAÇÃO
+        elif tipo_escolhido == "Legislação":
+
+            with st.form("Editar Legislação"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                anos = list(range(datetime.now().year, 1949, -1))
+                ano_atual = documento_escolhido.get("ano_publicacao", datetime.now().year)
+
+                if ano_atual not in anos:
+                    ano_atual = anos[0]
+
+                ano_publicacao = st.selectbox(
+                    "Ano de publicação",
+                    anos,
+                    index=anos.index(ano_atual)
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                autor = st.text_input(
+                    "Autor(es) / Autora(s)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                casa_legislativa = st.text_input(
+                    "Casa legislativa",
+                    value=documento_escolhido.get("casa_legislativa", "")
+                )
+
+                link_legislacao = st.text_input(
+                    "Link da legislação",
+                    value=documento_escolhido.get("link", "")
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "ano_publicacao": ano_publicacao,
+                        "tema": tema,
+                        "autor": autor,
+                        "casa_legislativa": casa_legislativa,
+                        "link": link_legislacao,
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = legislacao.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Legislação atualizada com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+
+        # EDITAR PONTO DE INTERESSE
+        elif tipo_escolhido == "Ponto de interesse":
+
+            with st.form("Editar Ponto de Interesse"):
+
+                titulo = st.text_input(
+                    "Título",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "O ponto está relacionado à atuação de alguma organização?",
+                    ["+ Cadastrar nova organização", "Nenhuma organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                link_google_maps = st.text_input(
+                    "Link do Google Maps",
+                    value=documento_escolhido.get("link", "")
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "tema": tema,
+                        "organizacao": organizacao,
+                        "latitude": documento_escolhido.get("latitude"),
+                        "longitude": documento_escolhido.get("longitude"),
+                        "link": link_google_maps,
+                        "thumb_link": documento_escolhido.get("thumb_link"),
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = pontos_interesse.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Ponto atualizado com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+
+        # EDITAR PROJETO
+        elif tipo_escolhido == "Projeto":
+
+            with st.form("Editar Projeto"):
+
+                titulo = st.text_input(
+                    "Nome do projeto",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                descricao = st.text_area(
+                    "Descrição",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                objetivo = st.text_area(
+                    "Objetivo Geral do projeto",
+                    value=documento_escolhido.get("objetivo", "")
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                fonte_recursos = st.text_input(
+                    "Fonte de recursos",
+                    value=documento_escolhido.get("fonte_recursos", "")
+                )
+
+                # Datas
+                data_inicio_atual = documento_escolhido.get("data_inicio")
+                data_fim_atual = documento_escolhido.get("data_fim")
+
+                col1, col2 = st.columns(2)
+
+                data_inicio = col1.date_input(
+                    "Data de início",
+                    value=data_inicio_atual.date() if data_inicio_atual else datetime.now().date()
+                )
+
+                data_fim = col2.date_input(
+                    "Data de fim",
+                    value=data_fim_atual.date() if data_fim_atual else datetime.now().date()
+                )
+
+                website = st.text_input(
+                    "Websites (separados por vírgula)",
+                    value=documento_escolhido.get("website", "")
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "descricao": descricao,
+                        "objetivo": objetivo,
+                        "tema": tema,
+                        "organizacao": organizacao,
+                        "fonte_recursos": fonte_recursos,
+                        "data_inicio": datetime(
+                            data_inicio.year,
+                            data_inicio.month,
+                            data_inicio.day
+                        ),
+                        "data_fim": datetime(
+                            data_fim.year,
+                            data_fim.month,
+                            data_fim.day
+                        ),
+                        "website": website,
+                        "documentos": documento_escolhido.get("documentos", []),
+                        "subfolder_id": documento_escolhido.get("subfolder_id"),
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = projetos.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Projeto atualizado com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+
+
+        # EDITAR PESQUISA
+        elif tipo_escolhido == "Pesquisa":
+
+            with st.form("Editar Pesquisa"):
+
+                titulo = st.text_input(
+                    "Nome da pesquisa",
+                    value=documento_escolhido.get("titulo", "")
+                )
+
+                ano_publicacao = st.text_input(
+                    "Ano de publicação",
+                    value=documento_escolhido.get("ano_publicacao", "")
+                )
+
+                autor = st.text_input(
+                    "Autor(es/as)",
+                    value=documento_escolhido.get("autor", "")
+                )
+
+                descricao = st.text_area(
+                    "Resumo executivo da pesquisa",
+                    value=documento_escolhido.get("descricao", "")
+                )
+
+                temas_documento = documento_escolhido.get("tema", [])
+
+                if not isinstance(temas_documento, list):
+                    temas_documento = [temas_documento] if temas_documento else []
+
+                tema = st.multiselect(
+                    "Tema",
+                    temas_ordenados,
+                    default=temas_documento
+                )
+
+                organizacoes_disponiveis = sorted([
+                    doc.get("titulo") for doc in organizacoes.find()
+                ])
+
+                organizacao_atual = documento_escolhido.get("organizacao", [])
+
+                if not isinstance(organizacao_atual, list):
+                    organizacao_atual = [organizacao_atual] if organizacao_atual else []
+
+                organizacao = st.multiselect(
+                    "Organização responsável",
+                    ["+ Cadastrar nova organização"] + organizacoes_disponiveis,
+                    default=organizacao_atual
+                )
+
+                submitted = st.form_submit_button(
+                    "Salvar",
+                    icon=":material/save:"
+                )
+
+                if submitted:
+
+                    data_atualizada = {
+                        "titulo": titulo,
+                        "ano_publicacao": ano_publicacao,
+                        "autor": autor,
+                        "descricao": descricao,
+                        "tema": tema,
+                        "organizacao": organizacao,
+                        "documentos": documento_escolhido.get("documentos", []),
+                        "subfolder_id": documento_escolhido.get("subfolder_id"),
+                        "tipo": documento_escolhido.get("tipo"),
+                        "enviado_por": st.session_state.get("nome"),
+                        "data_upload": datetime.now()
+                    }
+
+                    resultado = pesquisas.update_one(
+                        {"_id": ObjectId(documento_escolhido["_id"])},
+                        {"$set": data_atualizada}
+                    )
+
+                    if resultado.modified_count > 0:
+                        st.success("Pesquisa atualizada com sucesso!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma alteração foi detectada.")
+
 
     elif acao == "Excluir um documento":
         st.write('')
