@@ -22,8 +22,6 @@ from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 
 
-
-
 # --------------------------------------------------------------
 # Configurações do MongoDB
 # --------------------------------------------------------------
@@ -45,14 +43,6 @@ pessoas = db["pessoas"]
 organizacoes = db["organizacoes"]
 projetos = db["projetos"]
 pesquisas = db["pesquisas"]
-
-
-
-
-
-
-
-
 
 
 # --------------------------------------------------------------
@@ -111,7 +101,6 @@ TIPO_PASTA_MAP = {
     "Legislação": "legislacao",
     "Vídeo": "videos"
 }
-
 
 
 @st.dialog("Cadastrar Organização")
@@ -326,7 +315,6 @@ def upload_thumbnail_to_drive(local_path, nome_base, tipo):
         return None
 
 
-
 def upload_to_drive(file, filename, tipo):
     if tipo not in TIPO_PASTA_MAP:
         return None, None
@@ -382,7 +370,7 @@ def upload_to_drive(file, filename, tipo):
         thumb_name = f"miniatura_{base_name}.png"
         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
 
-        # 📸 IMAGEM
+        # IMAGEM
         if ext.lower() in [".png", ".jpg", ".jpeg", ".webp"]:
             img = Image.open(temp_path)
             img = img.convert("RGB")
@@ -391,7 +379,7 @@ def upload_to_drive(file, filename, tipo):
             img = img.resize((280, new_height), Image.Resampling.LANCZOS)
             img.save(thumb_path, "PNG")
 
-        # 📄 PDF (pypdfium2)
+        # PDF (pypdfium2)
         elif ext.lower() == ".pdf":
             pdf = pdfium.PdfDocument(temp_path)
             if len(pdf) == 0:
@@ -429,17 +417,6 @@ def upload_to_drive(file, filename, tipo):
     os.remove(temp_path)
 
     return file_link, thumb_link
-
-
-
-
-
-
-
-
-
-
-
 
 
 # # Envia o arquivo e a miniatura para o drive
@@ -525,12 +502,9 @@ def upload_to_drive(file, filename, tipo):
 #     return file_link, thumb_link
 
 
-
-
 # --------------------------------------------------------------
 # Transformação dos dados
 # --------------------------------------------------------------
-
 
 # Tipos de midia
 TIPOS_MIDIA = [
@@ -563,8 +537,6 @@ TEMAS_BABACU = [
 ]
 
 
-
-
 # --------------------------------------------------------------
 # Interface
 # --------------------------------------------------------------
@@ -577,7 +549,6 @@ st.header("Gerenciamento")
 
 
 tab_acervo, tab_pessoas = st.tabs(["Acervo", "Pessoas"])
-
 
 # ACERVO
 with tab_acervo:
@@ -807,7 +778,6 @@ with tab_acervo:
 
                 # Mostra mensagem de sucesso
                 st.success("Documento cadastrado com sucesso!")
-
 
 
     # 2. Cadastro de imagem ---------------------------------------------------------------------------
@@ -1111,9 +1081,6 @@ with tab_acervo:
 
         # --------------------------
 
-
-
-
         # Se o usuário escolheu cadastrar nova organização
         if "+ Cadastrar nova organização" in organizacao:
             cadastrar_organizacao()
@@ -1206,14 +1173,12 @@ with tab_acervo:
         # Upload da imagem para thumb
         thumb = st.file_uploader("Insira uma imagem do podcast (pode ser um print da tela)", type=["png", "jpg", "jpeg"])
 
-
         # Campo de texto: título
         link_podcast = st.text_input("Link do podcast")
 
         # Se o usuário escolheu cadastrar nova organização
         if "+ Cadastrar nova organização" in organizacao:
             cadastrar_organizacao()
-
 
         # ----- BOTÃO DE ENVIO E COLUNAS -----
 
@@ -1224,9 +1189,7 @@ with tab_acervo:
         # Botão de envio
         submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
 
-
         # ----- LÓGICA DE SUBMISSÃO -----
-
 
         if submitted:
 
@@ -1262,7 +1225,6 @@ with tab_acervo:
                 }
                 podcasts.insert_one(data)
                 st.success("Podcast cadastrado com sucesso!")
-
 
 
     # 6. Cadastro de site ---------------------------------------------------------------------------
@@ -1343,7 +1305,6 @@ with tab_acervo:
 
                 sites.insert_one(data)
                 st.success("Site cadastrado com sucesso!")
-
 
 
     # 7. Cadastro de mapa ---------------------------------------------------------------------------
@@ -1484,12 +1445,8 @@ with tab_acervo:
         # Campo de texto: casa legislativa
         casa_legislativa = st.text_input("Casa legislativa")
 
-
-
         # Campo de texto: título
         link_legislacao = st.text_input("Link da legislação")
-
-
 
         # ----- BOTÃO DE ENVIO E COLUNAS -----
 
@@ -1499,7 +1456,6 @@ with tab_acervo:
 
         # Botão de envio
         submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
-
 
         # ----- LÓGICA DE SUBMISSÃO -----
         if submitted:
@@ -1539,7 +1495,6 @@ with tab_acervo:
                     st.error(f"Erro no upload: {e}")
 
 
-
     # 9. Cadastro de ponto de interesse ---------------------------------------------------------------------------
     def enviar_ponto(): 
 
@@ -1557,7 +1512,6 @@ with tab_acervo:
 
         # Campo de texto longo: descrição
         descricao = st.text_area("Descrição")
-
 
         # Campo multiselect para temas
         tema = st.multiselect("Tema", temas_ordenados)
@@ -1580,7 +1534,6 @@ with tab_acervo:
         if "+ Cadastrar nova organização" in organizacao:
             cadastrar_organizacao()
 
-
         # ----- BOTÃO DE ENVIO E COLUNAS -----
 
         # Layout: duas colunas para botão e feedback
@@ -1590,14 +1543,12 @@ with tab_acervo:
         # Botão de envio
         submitted = col1.button(":material/check: Enviar", type="primary", use_container_width=True)
 
-
         # ----- LÓGICA DE SUBMISSÃO -----
         if submitted:
 
             # Validação: todos os campos obrigatórios devem estar preenchidos
             if not titulo or not descricao or not tema or not organizacao or not link_google_maps: 
                 st.error("Todos os campos são obrigatórios.")
-
 
             with st.spinner("Enviando ..."):
 
@@ -1611,7 +1562,6 @@ with tab_acervo:
                     except (IndexError, AttributeError):
                         return None, None
 
-
                 # Extrai a latitude e longitude do link do google maps
                 latitude, longitude = extrair_lat_long_google_maps(link_google_maps)
 
@@ -1623,8 +1573,6 @@ with tab_acervo:
                         nome_base=titulo,
                         tipo=tipo_doc
                     )
-
-
 
                 # Prepara o dicionário com os dados para salvar no MongoDB
                 data = {     
@@ -1885,11 +1833,8 @@ with tab_acervo:
                     st.error(f"Erro no upload: {e}")
 
 
-
-
     if acao == "Cadastrar documento":
         # Escolha do tipo de mídia
-
 
         # 1. Dicionário: valor real -> rótulo com ícone
         TIPOS_MIDIA = {
@@ -1923,7 +1868,6 @@ with tab_acervo:
             None
         )
 
-  
         if midia_selecionada == "Organização":
             enviar_organizacao()
         elif midia_selecionada == "Publicação":
@@ -1948,8 +1892,6 @@ with tab_acervo:
             enviar_projeto()
         elif midia_selecionada == "Pesquisa":
             enviar_pesquisa()
-
-
 
     elif acao == "Editar um documento":
         
@@ -2171,36 +2113,6 @@ with tab_acervo:
         # elif tipo_escolhido == "Ponto de interesse":
         #     editar_ponto(titulo_escolhido)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     elif acao == "Excluir um documento":
         st.write('')
 
@@ -2270,9 +2182,6 @@ with tab_acervo:
 
             else:
                 st.info("Não há documentos cadastrados para este tipo.")
-
-
-
 
 
 # #####################################################################################
@@ -2416,9 +2325,6 @@ def editar_pessoa():
             time.sleep(3)
             st.rerun()
 
-
-
-
         st.write('')
 
     st.write("**Visitante** consegue consultar a biblioteca e o mapa")
@@ -2470,7 +2376,6 @@ with tab_pessoas:
             hide_index=True
         )
 
-
         # Filtra usuários com convite pendente ------------------------------
         df_pessoas_pendentes = df_pessoas[df_pessoas["senha"].isna()]
 
@@ -2491,9 +2396,5 @@ with tab_pessoas:
             # Mostrar dataframe
             st.dataframe(df_pessoas_inativas.drop(columns=["senha", "_id"]), hide_index=True)
 
-
     elif st.session_state.permissao == "Visitante" or st.session_state.permissao == "Editor":
         st.write("Gerenciamento de pessoas disponível apenas para administradores.")
-
-
-
