@@ -255,7 +255,7 @@ def recuperar_senha_dialog():
                 
 def login_sidebar():
 
-    with st.expander("Área administrativa", expanded=False):
+    with st.expander("Login", expanded=False):
 
         with st.form("login_sidebar_form", border=False):
 
@@ -366,15 +366,7 @@ if "logged_in" not in st.session_state:
 if "permissao" not in st.session_state:
     st.session_state["permissao"] = ""
 
-with st.sidebar:
 
-    if not st.session_state["logged_in"]:
-        login_sidebar()
-
-    else:
-        st.caption(
-            f"Logado como: {st.session_state.get('nome', '')}"
-        )
         
 
 # --------------------------------------------------------------
@@ -539,8 +531,6 @@ if filtrar:
 
 
 # ------------------ 4. TRATAR RESULTADOS ------------------ #
-
-
 
 
 if arquivos:
@@ -806,13 +796,20 @@ if arquivos:
                     st.link_button("Ver detalhes", url=link, type="primary")
 
 
-
-
-
 else:
     st.info("Nenhum arquivo encontrado para os filtros aplicados.")
 
+with st.sidebar:
 
+    if not st.session_state["logged_in"]:
+        st.divider()
+        login_sidebar()
+
+    else:
+        st.divider()
+        st.caption(
+            f"Logado como: {st.session_state.get('nome', '')}"
+        )
 
 
 # Barra de logos
