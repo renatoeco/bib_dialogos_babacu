@@ -251,7 +251,7 @@ def recuperar_senha_dialog():
                     st.error(
                         "As senhas não coincidem ou estão vazias."
                     )
- 
+
                 
 def login_sidebar():
 
@@ -358,6 +358,7 @@ st.set_page_config(page_title="Biblioteca Virtual do Babaçu", layout="wide")
 
 st.logo("images/logo dialogos do babacu.png", size="large")
 st.header("Biblioteca Virtual do Babaçu")
+st.write('')
 st.write('')
 
 if "logged_in" not in st.session_state:
@@ -685,8 +686,7 @@ if arquivos:
                 # Renderiza miniatura
                 if thumb_link:
 
-                    # ?????????????????????/
-                    # st.write(thumb_link)
+
                 
                     try:
                         # --- Caso seja Google Drive ---
