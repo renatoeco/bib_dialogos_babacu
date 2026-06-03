@@ -13,21 +13,14 @@ if not st.session_state["logged_in"]:
         st.Page("Mapa.py", title="Mapa", icon=":material/map:")
     ])
 
-else:
 
-    if st.session_state["permissao"] == "Visitante":
 
-        pg = st.navigation([
-            st.Page("Biblioteca.py", title="Biblioteca", icon=":material/menu_book:"),
-            st.Page("Mapa.py", title="Mapa", icon=":material/map:")
-        ])
+if st.session_state["logged_in"]:
 
-    else:
-
-        pg = st.navigation([
-            st.Page("Biblioteca.py", title="Biblioteca", icon=":material/menu_book:"),
-            st.Page("Mapa.py", title="Mapa", icon=":material/map:"),
-            st.Page("Gerenciamento.py", title="Gerenciamento", icon=":material/settings:")
-        ])
+    pg = st.navigation([
+        st.Page("Biblioteca.py", title="Biblioteca", icon=":material/menu_book:"),
+        st.Page("Mapa.py", title="Mapa", icon=":material/map:"),
+        st.Page("Gerenciamento.py", title="Gerenciamento", icon=":material/settings:")
+    ])
 
 pg.run()
