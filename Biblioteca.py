@@ -76,11 +76,11 @@ def authenticate_drive():
 # INTERFACE
 # --------------------------------------------------------------
 
-st.set_page_config(page_title="Biblioteca Diálogos do Babaçu", layout="wide")
+st.set_page_config(page_title="Biblioteca Virtual do Babaçu", layout="wide")
 
 
 st.logo("images/logo dialogos do babacu.png", size="large")
-st.header("Biblioteca Diálogos do Babaçu")
+st.header("Biblioteca Virtual do Babaçu")
 st.write('')
 
 

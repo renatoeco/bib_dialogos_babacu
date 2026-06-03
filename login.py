@@ -42,7 +42,7 @@ def enviar_email(destinatario, codigo):
     senha = st.secrets["senhas_email"]["senha_email"]
 
     # Conteúdo do e_mail
-    assunto = "Código Para Redefinição de Senha - Biblioteca Diálogos do Babaçu"
+    assunto = "Código Para Redefinição de Senha - Biblioteca Virtual do Babaçu"
     corpo = f"""
     <html>
         <body>

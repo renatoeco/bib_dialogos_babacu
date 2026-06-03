@@ -3175,12 +3175,12 @@ def enviar_convite(destinatario):
     senha = st.secrets["senhas_email"]["senha_email"]
 
     # Conteúdo do e_mail
-    assunto = "Convite para a Biblioteca Diálogos do Babaçu"
+    assunto = "Convite para a Biblioteca Virtual do Babaçu"
     corpo = f"""
     <html>
         <body>
             <p style='font-size: 1.5em;'>
-                Olá. Você recebeu um convite para acessar a Biblioteca Diálogos do Babaçu.
+                Olá. Você recebeu um convite para acessar a Biblioteca Virtual do Babaçu.
             </p>
 
             <p style='font-size: 1.5em;'>
@@ -3188,7 +3188,7 @@ def enviar_convite(destinatario):
             </p>
 
             <p style='font-size: 1.5em;'>
-                <strong><a href="https://bibliotecababacu.streamlit.app/">Biblioteca Diálogos do Babaçu</a></strong> e clique em <strong>esqueci a senha</strong>.
+                <strong><a href="https://bibliotecababacu.streamlit.app/">Biblioteca Virtual do Babaçu</a></strong> e clique em <strong>esqueci a senha</strong>.
             </p>
         </body>
     </html>
