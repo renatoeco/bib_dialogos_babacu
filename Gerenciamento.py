@@ -3149,7 +3149,7 @@ def convidar_pessoa():
         email_invite = st.text_input("Email")
         permissao = st.selectbox(
             "Tipo de usuário",
-            ["Visitante", "Editor", "Administrador"]
+            ["Editor", "Administrador"]
         )
         status = "ativo"
 
@@ -3239,7 +3239,6 @@ def editar_pessoa():
         # Se não achar no DataFrame
         email_atual = ""
         status_atual = "ativo"
-        permissao_atual = "Visitante"
 
     # Formulário com preenchimento automático (ou vazio se não existir)
     with st.form("Editar pessoa"):
@@ -3254,8 +3253,8 @@ def editar_pessoa():
 
         permissao = st.selectbox(
             "Permissão",
-            ["Visitante", "Editor", "Administrador"],
-            index=["Visitante", "Editor", "Administrador"].index(permissao_atual) if permissao_atual in ["Visitante", "Editor", "Administrador"] else 0
+            ["Editor", "Administrador"],
+            index=["Editor", "Administrador"].index(permissao_atual) if permissao_atual in ["Editor", "Administrador"] else 0
         )
 
         if st.form_submit_button("Salvar", type="primary", icon=":material/save:"):
@@ -3275,7 +3274,6 @@ def editar_pessoa():
 
         st.write('')
 
-    st.write("**Visitante** consegue consultar a biblioteca e o mapa")
     st.write("**Editor** consegue adicionar, editar e excluir documentos")
     st.write("**Administrador** consegue convidar novas pessoas")
 
@@ -3344,5 +3342,5 @@ with tab_pessoas:
             # Mostrar dataframe
             st.dataframe(df_pessoas_inativas.drop(columns=["senha", "_id"]), hide_index=True)
 
-    elif st.session_state.permissao == "Visitante" or st.session_state.permissao == "Editor":
+    elif st.session_state.permissao == "Editor":
         st.write("Gerenciamento de pessoas disponível apenas para administradores.")
