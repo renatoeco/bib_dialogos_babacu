@@ -2983,7 +2983,9 @@ with tab_acervo:
     elif acao == "Excluir um documento":
         st.write('')
 
-        TIPOS_MIDIA_DEL = [tipo for tipo in TIPOS_MIDIA if tipo != "Organização"]
+        TIPOS_MIDIA_DEL = [tipo for tipo in TIPOS_MIDIA]
+
+        # TIPOS_MIDIA_DEL = [tipo for tipo in TIPOS_MIDIA if tipo != "Organização"]
 
         # Selectbox para tipo de documento com valor vazio por padrão
         tipo_escolhido = st.selectbox(
@@ -2993,8 +2995,7 @@ with tab_acervo:
             width=300
         )
 
-        # ???????
-        # st.write(tipo_escolhido)
+
 
         if tipo_escolhido:
             # Filtrar apenas os documentos com o tipo selecionado
@@ -3023,14 +3024,8 @@ with tab_acervo:
                         # Determinar a coleção correta a partir do mapa
                         nome_colecao = TIPO_PASTA_MAP.get(tipo_escolhido)
 
-                        # ??????????????????
-                        # st.write(f"Nome da coleção: {nome_colecao}")
-
                         if nome_colecao:
                             colecao = globals().get(nome_colecao)  # pega a variável da coleção pelo nome
-
-                            # ??????????????
-                            # st.write(f"Nome da coleção: {nome_colecao}")
 
 
                             if colecao is not None:
