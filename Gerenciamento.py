@@ -419,87 +419,6 @@ def upload_to_drive(file, filename, tipo):
     return file_link, thumb_link
 
 
-# # Envia o arquivo e a miniatura para o drive
-# def upload_to_drive(file, filename, tipo):
-#     if tipo not in TIPO_PASTA_MAP:
-#         return None, None
-
-#     tipo_key = TIPO_PASTA_MAP[tipo]
-#     parent_folder_id = st.secrets["pastas"].get(tipo_key)
-
-#     if not parent_folder_id:
-#         st.error(f"Pasta não configurada no secrets: {tipo_key}")
-#         return None, None
-
-#     drive = authenticate_drive()
-
-#     base_name, ext = os.path.splitext(filename)
-#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#     folder_name = f"{timestamp}_{base_name}"
-
-#     # Cria subpasta no Drive
-#     subfolder = drive.CreateFile({
-#         'title': folder_name,
-#         'mimeType': 'application/vnd.google-apps.folder',
-#         'parents': [{'id': parent_folder_id}]
-#     })
-#     subfolder.Upload()
-#     subfolder_id = subfolder['id']
-
-#     # Salva arquivo temporariamente
-#     with open(filename, "wb") as f:
-#         f.write(file.getbuffer())
-
-#     # Upload do arquivo original
-#     gfile = drive.CreateFile({'title': filename, 'parents': [{'id': subfolder_id}]})
-#     gfile.SetContentFile(filename)
-#     gfile.Upload()
-#     file_link = f"https://drive.google.com/file/d/{gfile['id']}/view"
-
-#     # ------------------------
-#     # Miniatura (imagem ou PDF)
-#     # ------------------------
-#     thumb_link = None
-#     try:
-#         thumb_name = f"miniatura_{base_name}.png"
-#         thumb_path = os.path.join(tempfile.gettempdir(), thumb_name)
-
-#         # Se for imagem
-#         if ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
-#             img = Image.open(filename)
-#             w, h = img.size
-#             new_height = int((280 / w) * h)  # mantém proporção
-#             img = img.resize((280, new_height), Image.Resampling.LANCZOS)
-#             img.save(thumb_path, "PNG")
-
-#         # Se for PDF → pega primeira página
-#         elif ext.lower() == '.pdf':
-#             pages = convert_from_path(filename, dpi=150, first_page=1, last_page=1)
-#             if pages:
-#                 img = pages[0]
-#                 w, h = img.size
-#                 new_height = int((280 / w) * h)  # mantém proporção
-#                 img = img.resize((280, new_height), Image.Resampling.LANCZOS)
-#                 img.save(thumb_path, "PNG")
-
-#         # Se gerou thumb, faz upload no Drive
-#         if os.path.exists(thumb_path):
-#             thumb_file = drive.CreateFile({
-#                 'title': thumb_name,
-#                 'parents': [{'id': subfolder_id}]
-#             })
-#             thumb_file.SetContentFile(thumb_path)
-#             thumb_file.Upload()
-#             thumb_link = f"https://drive.google.com/file/d/{thumb_file['id']}/view"
-#             os.remove(thumb_path)
-
-#     except Exception as e:
-#         st.warning(f"Miniatura não criada: {e}")
-
-#     # Remove arquivo local original
-#     os.remove(filename)
-
-#     return file_link, thumb_link
 
 
 # --------------------------------------------------------------
@@ -548,7 +467,7 @@ st.logo("images/logo dialogos do babacu.png", size="large")
 st.header("Gerenciamento")
 
 
-tab_acervo, tab_pessoas = st.tabs(["Acervo", "Pessoas"])
+tab_acervo, tab_pessoas, tab_criterios = st.tabs(["Acervo", "Pessoas", "Critérios de cadastro"])
 
 # ACERVO
 with tab_acervo:
@@ -3344,3 +3263,69 @@ with tab_pessoas:
 
     elif st.session_state.permissao == "Editor":
         st.write("Gerenciamento de pessoas disponível apenas para administradores.")
+
+
+
+
+
+with tab_criterios:
+
+    st.subheader("Critério para cadastro de documentos no site")
+
+
+    st.write('**Sobre a plataforma**')
+
+
+    st.write('A Biblioteca Virtual do Babaçu é um repositório de informações sobre a cadeia produtiva do babaçu a serviço dos atores do ' \
+    'coletivo Diálogos do Babaçu e da sociedade no geral, permitindo o armazenamento, a recuperação e a disseminação eficaz das informações.')
+
+    st.write('**Finalidade**')
+
+    st.write('Gerenciar e compartilhar informações sobre a cadeia do babaçu, incluindo documentos, relatórios, planos estratégicos, ' \
+    'fotografias, vídeos, mapas, publicações das organizações e links relevantes.')
+
+    st.write('')
+    st.write('')
+
+
+    st.write('**Critério para cadastro dos documentos**')
+
+    st.write('Não devem ser cadastrados documentos que:')
+
+    st.markdown("""
+    **1. Contenha problemas legais ou de direitos autorais**
+    - Fotos ou vídeos copiados da internet sem permissão
+    - Programas de TV/filmes completos sem licença
+    - Materiais com copyright sem autorização
+
+    **2. Contenha exposição de crianças sem permissão dos responsáveis**
+
+    **3. Contenha depoimentos gravados sem consentimento**
+
+    **4. Contenha registros que possam constranger pessoas das comunidades**
+
+    **5. Contenha técnicas que incentivem exploração predatória do babaçu**
+
+    **6. Contenha receitas perigosas**
+    - Uso de substâncias tóxicas
+    - Práticas inseguras
+
+    **7. Contenha informações sem fonte confiável quando se apresenta como “científico”**
+
+    **8. Contenha conteúdos discriminatórios ou ofensivos**
+    - Racismo, machismo ou misoginia
+    - Preconceito ou inferiorização das quebradeiras
+    - Linguagem violenta ou desrespeitosa
+    
+    **9. Contenha propaganda política, partidária ou religiosa**
+
+    **10. Contenha materiais sem relação com babaçu, extrativismo ou cultura do babaçu**
+
+    **11. Contenha publicidade comercial de marcas externas**
+
+    **12. Contenha problemas técnicos graves**
+    - Arquivos corrompidos
+    - Áudio inaudível
+    - Imagens muito pixeladas
+    - Formatos impossíveis de abrir
+    """)
